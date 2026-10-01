@@ -1,0 +1,8 @@
+{
+  "date_range": "2022-01-03 00:00:00 \u2192 2026-09-28 00:00:00",
+  "total_signals": 1170,
+  "correlation": 0.0268,
+  "directional_accuracy": 0.5068,
+  "strong_signal_accuracy": 0.5327,
+  "strong_signal_count": 627
+}

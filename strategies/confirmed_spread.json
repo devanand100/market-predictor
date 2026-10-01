@@ -1,0 +1,62 @@
+{
+  "name": "Confirmed Directional Credit Spread (Strategy 2)",
+  "version": "1.0 (2026-10-01)",
+  "note": "Export of the rules. Source of truth is the code: final_spread_strategy.py, research_directional_spreads.py (signal_table, make_legs_fn), research_positional.py (run_cycle), cost_model.py. If you change a value here, change it in code too.",
+  "instrument": "NIFTY 50 weekly options, nearest weekly expiry",
+  "schedule": {
+    "entry": "09:30 IST on the first trading session after each weekly expiry",
+    "exit": "15:15 IST on expiry day (never held into settlement)",
+    "trades_per_year_approx": 28
+  },
+  "signals": {
+    "fii_options": {
+      "source": "NSE participant-wise OI file (fao_participant_oi_DDMMYYYY.csv) published the evening BEFORE entry day",
+      "formula": "x_t = (FII opt_idx_CE_long - FII opt_idx_CE_short) - (FII opt_idx_PE_long - FII opt_idx_PE_short); raw = x_t - x_{t-1}; signal = raw - median(raw of all PAST entry weeks, min 20 weeks)",
+      "bullish_if": "signal > 0",
+      "bearish_if": "signal < 0",
+      "code": "research_directional_spreads.signal_table -> column fii_opt_chg"
+    },
+    "opening_gap": {
+      "source": "Nifty spot",
+      "formula": "spot(09:30 on entry day) / close(previous session) - 1",
+      "bullish_if": "> 0",
+      "bearish_if": "< 0",
+      "code": "research_directional_spreads.signal_table -> column pa_gap"
+    },
+    "rule": "Trade ONLY when both signals have the same sign; otherwise skip the week."
+  },
+  "structure": {
+    "straddle_S": "ATM CE + ATM PE price at 09:30 (ATM = spot rounded to nearest 50)",
+    "offset_d": "max(50, round(0.5 * S / 50) * 50)",
+    "bullish": "SELL PE at ATM - d, BUY PE at ATM - d - 200  (bull put spread)",
+    "bearish": "SELL CE at ATM + d, BUY CE at ATM + d + 200 (bear call spread)",
+    "spread_width_points": 200,
+    "stop_loss": "none (risk defined by the long leg)",
+    "take_profit": "none"
+  },
+  "sizing": {
+    "lot_size_units": 65,
+    "rule": "lots = max(1, floor(0.08 * equity / (200 * 65)))  -> a full max-loss week costs <= ~8% of equity",
+    "compounding": true,
+    "recommended_change": "v2 (2026-10-01): skip if credit/(200-credit) < 0.232 (credit < ~38 pts); bear calls full size, bull puts half size -> 11.4% CAGR, -8.4% max DD, Sharpe 2.31 (v1: 12.4%, -19.1%, 1.46). VIX and squeeze filters tested and rejected. See docs/STRATEGY_2_TRADE_ANALYSIS.md"
+  },
+  "backtest_assumptions": {
+    "fills": "1-minute close; sell at close - slip, buy at close + slip",
+    "slippage_points": "0.3 + 0.5% of premium per fill (stops: 0.5 + 1.5%, unused here)",
+    "charges": "cost_model.option_fill_cost: brokerage Rs20/order, STT on sells 0.05%->0.0625%(Apr-23)->0.1%(Oct-24)->0.15%(Apr-26), NSE txn 0.0503%->0.03503%(Oct-24), SEBI Rs10/cr, stamp 0.003% buys, GST 18%",
+    "running_costs_rs_per_month": 1990,
+    "start_capital_rs": 500000
+  },
+  "expected_results_for_rebuild_check": {
+    "period": "2022-05-27 to 2026-09-01",
+    "engine": "corrected (out-of-window strikes = intrinsic), 2026-10-01",
+    "trades": 119,
+    "final_equity_rs": 824583,
+    "cagr_pct": 12.4,
+    "max_drawdown_pct": -19.1,
+    "sharpe_weekly_annualised": 1.46,
+    "win_rate_pct": 84.0,
+    "cagr_2022_23_pct": 13.8,
+    "cagr_2024_26_pct": 9.0
+  }
+}

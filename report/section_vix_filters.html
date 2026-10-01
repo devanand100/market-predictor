@@ -1,0 +1,46 @@
+  <section>
+    <h2>VIX, reward-to-risk and "quiet then explode" filters</h2>
+    <p>Three ideas were tested: a VIX entry filter, skipping trades with poor reward-to-risk, and the pattern where a sideways market suddenly makes a big move. Every threshold was set from 2021–2023 data and then checked unchanged on 2024–2026.</p>
+    <div class="two">
+      <div class="panel">
+        <h3>Does the market explode after quiet weeks?</h3>
+        <div class="tbl"><table>
+          <thead><tr><th>Before the week</th><th class="n">2021–23</th><th class="n">2024–26</th></tr></thead>
+          <tbody>
+            <tr><td>Compressed ranges (quietest third)</td><td class="n">40%</td><td class="n">53%</td></tr>
+            <tr><td>Normal ranges</td><td class="n">40%</td><td class="n">38%</td></tr>
+            <tr><td>Wide ranges (busiest third)</td><td class="n">29%</td><td class="n">41%</td></tr>
+          </tbody>
+        </table></div>
+        <p style="font-size:13px">Share of weeks where Nifty moved more than the ATM straddle priced. Compression = 5-day average daily range under 0.82× the 60-day average. This was the only regime measure that behaved the same way in both periods; VIX level, VIX percentile, rising VIX, Bollinger squeeze and realised-vol ratios all flipped.</p>
+      </div>
+      <div class="panel">
+        <h3>Can the explosion be traded?</h3>
+        <div class="tbl"><table>
+          <thead><tr><th>Buy ATM straddle, 50% target</th><th class="n">2021–23</th><th class="n">2024–26</th></tr></thead>
+          <tbody>
+            <tr><td>Normal weeks, per lot</td><td class="n">−₹1,455</td><td class="n">−₹3,236</td></tr>
+            <tr><td>Compressed weeks, per lot</td><td class="n">+₹585</td><td class="n">+₹435</td></tr>
+            <tr><td>p-value vs random weeks</td><td class="n"><span class="pill warn">0.108</span></td><td class="n"><span class="pill warn">0.076</span></td></tr>
+            <tr><td>Sized, after running costs</td><td class="n" colspan="2">−1.7% CAGR</td></tr>
+          </tbody>
+        </table></div>
+        <p style="font-size:13px"><span class="pill no">Rejected</span> The effect is real but too small to pay for buying options, which are usually priced above the moves they cover. Compression also did not work as a skip filter for either strategy.</p>
+      </div>
+    </div>
+    <div class="panel">
+      <h3>Reward-to-risk filter for Strategy 2 <span class="pill ok">Adopted</span></h3>
+      <p>Skip the trade when the premium collected is under 23.2% of the maximum loss, which is under about 38 points on a 200-point spread. These thin-credit trades earned close to nothing in both periods (−0.07% and −0.02% per trade). Every cutoff from 20% to 28% improved the result, so the benefit does not depend on one exact number.</p>
+      <div class="tbl"><table>
+        <thead><tr><th>Strategy 2 version (₹5L, 2022–26)</th><th class="n">Trades</th><th class="n">CAGR</th><th class="n">Max DD</th><th class="n">Sharpe</th><th class="n">Dec 25 – Apr 26</th></tr></thead>
+        <tbody>
+          <tr><td>v1, current rules</td><td class="n">119</td><td class="n">12.4%</td><td class="n">−19.1%</td><td class="n">1.46</td><td class="n">−11.0%</td></tr>
+          <tr><td>Skip poor reward-to-risk</td><td class="n">91</td><td class="n">12.5%</td><td class="n">−15.8%</td><td class="n">1.88</td><td class="n">−8.9%</td></tr>
+          <tr><td><b>v2: skip poor reward-to-risk + bull puts at half size</b></td><td class="n">91</td><td class="n">11.4%</td><td class="n"><b>−8.4%</b></td><td class="n"><b>2.31</b></td><td class="n">−4.2%</td></tr>
+          <tr><td>Skip poor reward-to-risk + bear calls only</td><td class="n">48</td><td class="n">12.5%*</td><td class="n">−5.3%</td><td class="n">3.88</td><td class="n">+1.7%</td></tr>
+        </tbody>
+      </table></div>
+      <p style="font-size:13px">*Charged running costs in fewer months, which flatters it by about 1 point, and it has only 48 trades. Recommended: v2. It gives up 1 point of CAGR but more than halves the worst drawdown.</p>
+    </div>
+    <p><span class="pill no">Rejected</span> VIX entry filters. No VIX measure improved either strategy in both periods; each one helped in one period and hurt in the other.</p>
+  </section>

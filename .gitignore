@@ -1,0 +1,24 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.ipynb_checkpoints/
+
+# Rebuildable large data (see docs/STRATEGY_2_CONFIRMED_SPREAD.md -> "Rebuild from scratch")
+data/processed/*.parquet
+data/processed/engine_cache.pkl
+data/raw/
+
+# Kept on purpose (small, slow or impossible to re-scrape exactly):
+#   data/processed/participant_oi_*.csv, nifty50_daily.csv, india_vix_daily.csv
+#   data/reports/*  (backtest outputs used to verify a rebuild)
+
+# Secrets / local tooling
+.env
+*.env
+secrets*.json
+.claude/settings.local.json
+.vscode/
+.idea/
+*.log

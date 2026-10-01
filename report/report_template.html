@@ -1,0 +1,541 @@
+<title>Nifty Weekly Strangle Tearsheet</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,600;8..60,700&family=Public+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: single reading column (max 1080px) of a desk tearsheet — verdict first, then evidence, then risk, then rules. */
+:root {
+  --bg: #f6f7f8;
+  --surface: #ffffff;
+  --ink: #111418;
+  --ink-2: #4b525c;
+  --ink-3: #7a818b;
+  --line: #e1e4e8;
+  --grid: #eceef1;
+  --accent: #2a78d6;      /* strategy series */
+  --bench: #eb6834;       /* Nifty series */
+  --s2: #1baf7a;          /* spread strategy series */
+  --pos: #2a78d6;
+  --neg: #e34948;
+  --mid: #f0efec;
+  --good-bg: #e6f4ea; --good-fg: #1d6b35;
+  --bad-bg: #fbe9e9;  --bad-fg: #a3302f;
+  --warn-bg: #fdf3dc; --warn-fg: #8a5a00;
+  --f-display: "Source Serif 4", Georgia, "Times New Roman", serif;
+  --f-body: "Public Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #121417; --surface: #1a1c20; --ink: #f2f3f5; --ink-2: #c1c6cd; --ink-3: #8d949e;
+  --line: #2c3036; --grid: #24272c; --accent: #3987e5; --bench: #d95926; --s2: #199e70; --pos: #3987e5; --neg: #e66767; --mid: #383835;
+  --good-bg: #183324; --good-fg: #8fd4a6; --bad-bg: #3a1c1c; --bad-fg: #f0a1a0; --warn-bg: #3a2e12; --warn-fg: #f0c86a;
+  color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #121417; --surface: #1a1c20; --ink: #f2f3f5; --ink-2: #c1c6cd; --ink-3: #8d949e;
+  --line: #2c3036; --grid: #24272c; --accent: #3987e5; --bench: #d95926; --s2: #199e70; --pos: #3987e5; --neg: #e66767; --mid: #383835;
+  --good-bg: #183324; --good-fg: #8fd4a6; --bad-bg: #3a1c1c; --bad-fg: #f0a1a0; --warn-bg: #3a2e12; --warn-fg: #f0c86a;
+  color-scheme: dark; }
+
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font: 15px/1.6 var(--f-body); padding-inline: 16px; padding-block: 32px 64px; }
+.wrap { max-width: 1080px; margin: 0 auto; display: grid; gap: 40px; }
+h1, h2 { font-family: var(--f-display); text-wrap: balance; margin: 0; letter-spacing: -0.01em; }
+h1 { font-size: clamp(28px, 4.2vw, 42px); line-height: 1.12; }
+h2 { font-size: 24px; line-height: 1.25; }
+h3 { font-size: 15px; margin: 0; font-weight: 600; }
+p { margin: 0; max-width: 68ch; color: var(--ink-2); }
+.eyebrow { font: 500 12px/1 var(--f-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3); }
+.num, td.n, .mono { font-family: var(--f-mono); font-variant-numeric: tabular-nums; }
+section { display: grid; gap: 16px; min-width: 0; }
+header { display: grid; gap: 14px; }
+.meta { display: flex; flex-wrap: wrap; gap: 8px 20px; font: 13px var(--f-mono); color: var(--ink-3); }
+
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.kpi { background: var(--surface); padding: 16px 18px; display: grid; gap: 4px; }
+.kpi .v { font: 500 26px/1.1 var(--f-mono); font-variant-numeric: tabular-nums; }
+.kpi .l { font-size: 13px; color: var(--ink-2); }
+.kpi .s { font: 12px var(--f-mono); color: var(--ink-3); }
+
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 18px; display: grid; gap: 12px; min-width: 0; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 13px; color: var(--ink-2); }
+.legend i { display: inline-block; width: 14px; height: 2px; vertical-align: middle; margin-right: 6px; border-radius: 1px; }
+.chart { position: relative; width: 100%; }
+.chart svg { display: block; width: 100%; height: auto; overflow: visible; }
+.chart text { fill: var(--ink-3); font: 11px var(--f-mono); }
+.tip { position: absolute; pointer-events: none; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; font: 12px/1.5 var(--f-mono); color: var(--ink); box-shadow: 0 4px 14px rgba(0,0,0,.12); white-space: nowrap; z-index: 2; }
+.tip b { font-weight: 500; }
+
+.tbl { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+th, td { padding: 9px 12px; text-align: left; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font: 500 12px var(--f-mono); letter-spacing: .04em; text-transform: uppercase; color: var(--ink-3); }
+td.n, th.n { text-align: right; white-space: nowrap; }
+tr:last-child td { border-bottom: 0; }
+.pill { display: inline-block; font: 500 12px/1 var(--f-mono); padding: 5px 8px; border-radius: 999px; white-space: nowrap; }
+.pill.ok { background: var(--good-bg); color: var(--good-fg); }
+.pill.no { background: var(--bad-bg); color: var(--bad-fg); }
+.pill.warn { background: var(--warn-bg); color: var(--warn-fg); }
+
+.heat { display: grid; grid-template-columns: 44px repeat(12, minmax(0, 1fr)) 60px; gap: 2px; font: 11px var(--f-mono); min-width: 560px; }
+.heat div { padding: 7px 2px; text-align: center; border-radius: 3px; font-variant-numeric: tabular-nums; }
+.heat .h { color: var(--ink-3); }
+.heat .c { cursor: default; }
+.heat .c:hover { outline: 2px solid var(--ink); outline-offset: -2px; }
+.heat .yr { text-align: left; color: var(--ink-2); }
+.heat .tot { font-weight: 500; color: var(--ink); }
+
+.two { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
+.rules { margin: 0; padding-left: 20px; display: grid; gap: 8px; color: var(--ink-2); max-width: 72ch; }
+.rules b { color: var(--ink); font-weight: 600; }
+.callout { border-left: 3px solid var(--neg); padding: 4px 0 4px 16px; display: grid; gap: 8px; }
+.callout ul { margin: 0; padding-left: 18px; color: var(--ink-2); display: grid; gap: 6px; max-width: 72ch; }
+.bar { height: 10px; border-radius: 5px; background: var(--grid); overflow: hidden; display: flex; gap: 2px; }
+.bar span { display: block; height: 100%; }
+footer { font-size: 13px; color: var(--ink-3); display: grid; gap: 6px; }
+footer code { font-family: var(--f-mono); font-size: 12px; }
+@media (max-width: 560px) { .kpi .v { font-size: 22px; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <span class="eyebrow">Nifty 50 weekly options · research tearsheet · Sep 2026</span>
+    <h1>Two weekly Nifty option strategies that survived the out-of-sample test</h1>
+    <p>Five years of DhanHQ 1-minute option, spot and India VIX data plus NSE participant OI were used to test six strategy families. Settings were chosen on 2021–2023 only and then run once on 2024–2026. Two held up after every charge, slippage and running cost: a non-directional weekly short strangle, and a directional credit spread that trades only when FII option positioning and the opening gap agree. The headline figures below are for the strangle; the spread has its own section.</p>
+    <p><b>Updated 1 Oct 2026.</b> A backtest bug was fixed: strikes that moved outside the data window kept stale prices, which understated losses on big moves. All figures on this page are rerun on the fixed engine. Strategy 2 fell from 18.0% to 12.4% CAGR; Strategy 1 rose from 11.1% to 12.6%.</p>
+    <div class="meta"><span>Data: Jan 2021 – Sep 2026</span><span>296 weekly expiries</span><span>Start capital ₹5,00,000</span><span>All figures pre-tax</span></div>
+  </header>
+
+  <section aria-label="Headline results">
+    <div class="kpis" id="kpis"></div>
+  </section>
+
+  <section>
+    <h2>Equity vs buying Nifty</h2>
+    <p>Both lines start with ₹5 lakh. The strategy ends ahead, but it took a deeper fall on the way, in 2021–22. The shaded area is the out-of-sample period that played no part in choosing the settings.</p>
+    <div class="panel">
+      <div class="legend"><span><i style="background:var(--accent)"></i>Strangle strategy (net)</span><span><i style="background:var(--bench)"></i>Nifty buy &amp; hold</span></div>
+      <div class="chart" id="eq"></div>
+    </div>
+    <div class="panel">
+      <h3>Drawdown from peak, strategy</h3>
+      <div class="chart" id="dd"></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Monthly returns</h2>
+    <p>Return on equity each month, net of costs. Blue is a gain, red a loss. Hover a cell for the exact figure.</p>
+    <div class="panel"><div class="tbl"><div class="heat" id="heat"></div></div></div>
+  </section>
+
+  <section>
+    <h2>In-sample vs out-of-sample</h2>
+    <p>The out-of-sample years were better than the tuning years. That is the opposite of what overfitting produces, and all 36 parameter variants tested stayed profitable in 2024–2026.</p>
+    <div class="panel tbl"><table id="split"></table></div>
+  </section>
+
+  <section>
+    <h2>What was tested and rejected</h2>
+    <p>Most popular retail ideas failed once real contract prices and real costs were used, or stopped working after 2023.</p>
+    <div class="panel tbl"><table>
+      <thead><tr><th>Idea</th><th>2021–2023</th><th>2024–2026</th><th>Verdict</th></tr></thead>
+      <tbody>
+        <tr><td>Expiry-day (0DTE) short straddle</td><td>+₹1.08L, very high Sharpe</td><td>Lost money in 2024, 2025 and 2026</td><td><span class="pill no">Rejected</span></td></tr>
+        <tr><td>FII index-futures change → trade Nifty futures</td><td>+₹2.19L</td><td>−₹4.01L; every FII/DII signal flipped sign</td><td><span class="pill no">Rejected</span></td></tr>
+        <tr><td>Intraday short straddle on non-expiry days</td><td>Loses after ~5–6 pts friction per day</td><td>n/a</td><td><span class="pill no">Rejected</span></td></tr>
+        <tr><td>Hedged iron condors</td><td>Mostly negative</td><td>Mostly negative</td><td><span class="pill no">Rejected</span></td></tr>
+        <tr><td>Weekly price-action trend (5/20-day momentum, EMA20, weekly range) → spreads</td><td>Weak</td><td>Direction right in only 42–49% of weeks</td><td><span class="pill no">Rejected</span></td></tr>
+        <tr><td>PCR (put-call ratio from option OI) → spreads</td><td>Coin flip</td><td>Worse than a coin flip</td><td><span class="pill no">Rejected</span></td></tr>
+        <tr><td>VIX vs realised-vol filter on the strangle</td><td>Cut drawdown</td><td>Cut profit, did not cut drawdown</td><td><span class="pill warn">Dropped</span></td></tr>
+        <tr><td><b>Weekly expected-move short strangle</b></td><td>36 of 36 variants profitable</td><td>36 of 36 profitable, median Sharpe 1.03</td><td><span class="pill ok">Strategy 1</span></td></tr>
+        <tr><td><b>Credit spread when FII options change and opening gap agree</b></td><td>p = 0.011 vs random direction</td><td>p = 0.011 vs random direction</td><td><span class="pill ok">Strategy 2</span></td></tr>
+      </tbody>
+    </table></div>
+    <p>The earlier backtests in this project (iron condor, 20.6% CAGR) were invalid. They followed a rolling "ATM+4" label that switches contracts every 50 Nifty points, and used an exchange fee about 12× too low.</p>
+  </section>
+
+  <section>
+    <h2>Strategy 2: directional spreads from NSE data, PCR and price action</h2>
+    <p>Each week, 15 point-in-time signals were used to pick a direction and trade a vertical spread. The signals came from NSE participant OI (FII, Client, Pro), PCR from the option chain, price-action trend, and VIX. Every signal was then compared with 10,000 random direction choices over the same weeks. The p-value is the chance that random choices would have done as well.</p>
+    <div class="panel tbl"><table id="sigtbl"></table></div>
+    <p>Only two signals beat chance in both periods: the change in FII index-option positioning, and the Nifty opening gap on entry day. They are almost unrelated to each other (correlation 0.07). Trading only when both point the same way was significant in both periods (p = 0.011 each) and in all three spread types tested.</p>
+    <div class="kpis" id="kpis2"></div>
+    <div class="panel">
+      <div class="legend"><span><i style="background:var(--s2)"></i>Confirmed spread (Strategy 2)</span><span><i style="background:var(--accent)"></i>Weekly strangle (Strategy 1)</span><span><i style="background:var(--bench)"></i>Nifty buy &amp; hold</span></div>
+      <div class="chart" id="eq2"></div>
+      <p style="font-size:13px">All three rebased to ₹5 lakh on 27 May 2022, the first week with enough FII history to centre the signal. Strategy 2 trades about 28 weeks a year and sits out the rest.</p>
+    </div>
+    <div class="two">
+      <div class="panel">
+        <h3>Strategy 2 rules</h3>
+        <ol class="rules">
+          <li><b>FII signal:</b> from the NSE participant OI file published the evening before entry, take FII index options (Call long − Call short) − (Put long − Put short), change it day over day, and subtract the median of past weeks. Above zero is bullish.</li>
+          <li><b>Gap signal:</b> Nifty at 09:30 on entry day vs the previous close. Up is bullish.</li>
+          <li><b>Trade only if both agree.</b> Bullish: sell a Put at ATM − ½ straddle and buy a Put 200 points lower. Bearish: sell a Call at ATM + ½ straddle and buy a Call 200 points higher.</li>
+          <li><b>No stop.</b> The spread caps the loss. Close at 15:15 on expiry day.</li>
+          <li><b>Sizing:</b> a full-loss week is capped at 8% of equity (200 pts × 65 × lots). That was about 4 lots on ₹5 lakh, with far less margin than a naked strangle.</li>
+        </ol>
+      </div>
+      <div class="panel">
+        <h3>Strategy 2 vs Strategy 1, same period</h3>
+        <div class="tbl"><table id="cmp2"></table></div>
+      </div>
+    </div>
+    <div class="callout">
+      <h3>How much to trust Strategy 2</h3>
+      <ul>
+        <li>These two signals were picked after seeing that they held their sign in both periods, so 2024–2026 is not fully unseen for this strategy the way it is for the strangle. Treat the results as strong evidence, not proof.</li>
+        <li>It has four years of data (119 trades), not five and a half. 2026 so far is −10.0%. The analysis below shows why.</li>
+        <li>The weekly returns of the two strategies are almost uncorrelated (0.16). Running both on split capital lowered the worst week from −8.8% to −6.6%.</li>
+      </ul>
+    </div>
+  </section>
+
+  <section>
+    <h2>Strategy 2 trade analysis: 2024–2025 and Dec 2025 – Apr 2026</h2>
+    <p>2024–2025 returned +50% with an 87.5% win rate. Dec 2025 – Apr 2026 lost 11.0%, the strategy's deepest drawdown (−19.1%). In that window 10 of 11 trades were bull puts while Nifty fell in 73% of weeks.</p>
+    <div class="panel">
+      <h3>Monthly return, Strategy 2</h3>
+      <div class="legend"><span><i style="background:var(--pos)"></i>Gain</span><span><i style="background:var(--neg)"></i>Loss</span><span><i style="background:var(--grid);height:10px"></i>Dec 2025 – Apr 2026</span></div>
+      <div class="chart" id="mbar"></div>
+      <p style="font-size:13px">Months with no bar had no trade (the two signals disagreed every week).</p>
+    </div>
+    <div class="panel tbl"><table>
+      <thead><tr><th>Window</th><th class="n">Trades</th><th class="n">Return</th><th class="n">Win rate</th><th class="n">Max DD</th><th class="n">Direction right</th><th class="n">Weeks Nifty rose</th></tr></thead>
+      <tbody>
+        <tr><td>2024–2025</td><td class="n">56</td><td class="n">+50.0%</td><td class="n">87.5%</td><td class="n">−10.1%</td><td class="n">68%</td><td class="n">51%</td></tr>
+        <tr><td>Dec 2025 – Apr 2026</td><td class="n">11</td><td class="n">−11.0%</td><td class="n">63.6%</td><td class="n">−19.1%</td><td class="n">45%</td><td class="n">27%</td></tr>
+        <tr><td>All, 2022–2026</td><td class="n">119</td><td class="n">+64.9%</td><td class="n">84.0%</td><td class="n">−19.1%</td><td class="n">66%</td><td class="n">53%</td></tr>
+      </tbody>
+    </table></div>
+    <div class="two">
+      <div class="panel">
+        <h3>What lost money</h3>
+        <ul class="rules">
+          <li><b>Mar–May 2024, before the election.</b> VIX rose from 14 to 21 and the market chopped. A bull put and then a bear call were both hit; May 2024 was −9.1%.</li>
+          <li><b>27 Sep 2024.</b> A bull put at the market top, followed by the −3.7% week that began the FII selloff.</li>
+          <li><b>9 May 2025.</b> A bear call during the India–Pakistan conflict, hit by the +4% ceasefire rally.</li>
+          <li><b>Feb 2026.</b> VIX of 11–12 meant a small straddle, so the short strike sat only 95–150 points away. Ordinary 1% dips caused near-max losses.</li>
+          <li><b>Mar 2026.</b> Bull puts entered on gap-up bounces inside a steep fall (Nifty 3.6–3.9% below its 20-day average, VIX 19–25). They lost −7.1% and −5.0%.</li>
+        </ul>
+      </div>
+      <div class="panel">
+        <h3>What made money</h3>
+        <ul class="rules">
+          <li><b>Jun–Sep 2024.</b> 11 straight bull put wins in a steady uptrend at VIX ~14.</li>
+          <li><b>Oct 2024 – May 2025.</b> 15 straight wins, +28%, while FIIs sold. Two in three trades were bear calls.</li>
+          <li><b>Jun–Aug 2025.</b> 9 straight wins at calm VIX 12–15.</li>
+          <li>In profitable months the direction was right 82% of the time, against 33% in losing months.</li>
+          <li>All 19 losing trades were wrong-direction calls on big moves (median 1.58% vs 0.85% for winners). Sideways weeks never lost.</li>
+        </ul>
+      </div>
+    </div>
+    <div class="panel tbl"><table id="losersB"></table></div>
+    <div class="two">
+      <div class="panel">
+        <h3>Bear calls carry the strategy</h3>
+        <div class="tbl"><table>
+          <thead><tr><th>Side</th><th class="n">Trades</th><th class="n">Win rate</th><th class="n">Avg per trade</th><th class="n">2022–23</th><th class="n">2024–26</th></tr></thead>
+          <tbody>
+            <tr><td>Bear call</td><td class="n">51</td><td class="n">90%</td><td class="n">+0.94%</td><td class="n">+0.68%</td><td class="n">+1.12%</td></tr>
+            <tr><td>Bull put</td><td class="n">68</td><td class="n">79%</td><td class="n">+0.08%</td><td class="n">+0.30%</td><td class="n">−0.03%</td></tr>
+          </tbody>
+        </table></div>
+        <p style="font-size:13px">Bull puts caused 71% of all losses. Nifty falls faster than it rises, so bull put max-loss weeks are the sharp selloffs, and gap-ups inside downtrends are often short bounces.</p>
+      </div>
+      <div class="panel">
+        <h3>Sizing variants, 2022–2026</h3>
+        <div class="tbl"><table>
+          <thead><tr><th>Version</th><th class="n">CAGR</th><th class="n">Max DD</th><th class="n">Sharpe</th><th class="n">Dec 25 – Apr 26</th></tr></thead>
+          <tbody>
+            <tr><td>Current rules</td><td class="n">12.4%</td><td class="n">−19.1%</td><td class="n">1.46</td><td class="n">−11.0%</td></tr>
+            <tr><td>Bull puts at half size</td><td class="n">10.2%</td><td class="n">−10.1%</td><td class="n">1.63</td><td class="n">−4.9%</td></tr>
+            <tr><td><b>Bear calls only</b></td><td class="n">10.9%*</td><td class="n">−6.9%</td><td class="n">2.91</td><td class="n">+1.8%</td></tr>
+          </tbody>
+        </table></div>
+        <p style="font-size:13px">*Running costs are charged only in months with a trade, which flatters bear-only by about 1 point. Bear calls alone are significant in both periods (p = 0.037 and 0.010). Suggested: bear calls at full size, bull puts at half size or not at all.</p>
+      </div>
+    </div>
+    <p>Two filters that looked good in hindsight were rejected because they failed in one of the two periods: skipping trades when VIX is above 18 (+0.9% per trade in 2022–23, −2.2% in 2024–26), and skipping bull puts when Nifty is below its 20-day average.</p>
+  </section>
+
+  <section>
+    <h2>Strategy 1 rules: weekly strangle</h2>
+    <div class="panel">
+      <ol class="rules">
+        <li><b>Entry:</b> 09:30, exactly 4 trading sessions before expiry. In a normal 5-session week that is the first session after the previous expiry. Weeks with fewer than 5 sessions (holidays) are skipped, which is why there are 216 trades, not about 294.</li>
+        <li><b>Strikes:</b> read the ATM straddle price S. Sell the Call at ATM + S and the Put at ATM − S, rounded to 50. S is the market's own estimate of the week's move.</li>
+        <li><b>Stop:</b> close both legs if the combined loss reaches 1.5× the premium collected. Checked every minute.</li>
+        <li><b>Exit:</b> otherwise close at 15:15 on expiry day. Never hold into settlement.</li>
+        <li><b>Sizing:</b> lots of 65. Margin is taken as about 9% of notional per strangle; use at most 60% of capital as margin and keep 40% as a buffer. Lots grow with equity. The backtest ran 2–3 lots on ₹5L.</li>
+        <li><b>No FII, VIX or trend filter.</b> None of them held up out-of-sample.</li>
+      </ol>
+    </div>
+  </section>
+
+  <section>
+    <h2>Running costs</h2>
+    <div class="two">
+      <div class="panel">
+        <h3>Where the gross profit went, 2021–2026</h3>
+        <div class="bar" id="costbar" role="img"></div>
+        <div class="tbl"><table id="costtbl"></table></div>
+      </div>
+      <div class="panel">
+        <h3>Charges modelled on every order</h3>
+        <div class="tbl"><table>
+          <tbody>
+            <tr><td>Brokerage</td><td class="n">₹20 per order</td></tr>
+            <tr><td>STT on option sells</td><td class="n">0.05% → 0.0625% → 0.1% → 0.15%</td></tr>
+            <tr><td>NSE exchange charge</td><td class="n">0.0503% → 0.03503%</td></tr>
+            <tr><td>SEBI fee / stamp duty</td><td class="n">₹10 per crore / 0.003% on buys</td></tr>
+            <tr><td>GST</td><td class="n">18% on brokerage + fees</td></tr>
+            <tr><td>Slippage, normal fill</td><td class="n">0.3 pt + 0.5% of premium</td></tr>
+            <tr><td>Slippage, stop-loss fill</td><td class="n">0.5 pt + 1.5% of premium</td></tr>
+            <tr><td>Fixed: data API, VPS, misc</td><td class="n">₹1,990 per month</td></tr>
+          </tbody>
+        </table></div>
+        <p style="font-size:13px">STT is date-aware: the Apr 2026 rise to 0.15% is applied from that date. Positions are always closed before 15:30, so exercise STT never applies.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Risk</h2>
+    <div class="two">
+      <div class="panel">
+        <h3>Stress tests</h3>
+        <div class="tbl"><table id="stress"></table></div>
+      </div>
+      <div class="panel">
+        <h3>Monte Carlo, 10,000 five-year paths</h3>
+        <div class="tbl"><table id="mc"></table></div>
+      </div>
+    </div>
+    <div class="panel">
+      <h3>Worst weeks</h3>
+      <div class="tbl"><table id="worst"></table></div>
+    </div>
+    <div class="callout">
+      <h3>Before trading this with real money</h3>
+      <ul>
+        <li>The edge is thin. Doubling slippage cuts CAGR from 12.6% to 7.7%, so fill quality decides whether this is worth running.</li>
+        <li>Gap risk is not hedged. The option data starts in 2021, so no crash on the scale of March 2020 is in the test.</li>
+        <li>Paper trade for 8–12 weeks, compare your real fills with the slippage assumed here, then start at half size.</li>
+        <li>Below about ₹5 lakh, the fixed monthly costs eat most of the return.</li>
+        <li>F&amp;O profit is taxed as business income. All returns shown are pre-tax.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    <span>Backtest engine tracks each option by absolute strike, minute by minute. Stop fills use the 1-minute high as trigger and the worse of the stop price or bar close as fill.</span>
+    <span>Source: <code>final_strategy.py</code>, <code>data/reports/final_trades.csv</code>, <code>data/reports/final_strategy_summary.json</code> in market-predictor.</span>
+  </footer>
+</div>
+
+<script>
+const D = /*DATA*/null;
+const D2 = /*DATA2*/null;
+const D3 = /*DATA3*/null;
+const fmtR = v => '₹' + Math.round(v).toLocaleString('en-IN');
+const fmtL = v => '₹' + (v / 1e5).toFixed(2) + 'L';
+const pct = (v, d = 1) => (v > 0 ? '+' : v < 0 ? '−' : '') + Math.abs(v).toFixed(d) + '%';
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const NS = 'http://www.w3.org/2000/svg';
+const el = (t, a = {}, p) => { const e = document.createElementNS(NS, t); for (const k in a) e.setAttribute(k, a[k]); if (p) p.appendChild(e); return e; };
+
+// KPIs
+const F = D.full, O = D.out_of_sample;
+document.getElementById('kpis').innerHTML = [
+  ['CAGR, net of all costs', pct(F.cagr_pct), `Nifty buy &amp; hold ${pct(D.benchmark_nifty_cagr_pct)}`],
+  ['CAGR, out-of-sample 2024–26', pct(O.cagr_pct), 'settings never saw this period'],
+  ['Max drawdown', pct(F.max_dd_pct), `Nifty ${pct(D.benchmark_nifty_maxdd_pct)}`],
+  ['₹5L grew to', fmtL(F.final_equity), `Nifty ${fmtL(D.curve[D.curve.length - 1][2])}`],
+  ['Win rate', F.win_rate_pct.toFixed(1) + '%', `${F.trades} weekly trades`],
+  ['Sharpe (weekly, annualised)', F.sharpe_weekly_ann.toFixed(2), `profit factor ${F.profit_factor}`],
+].map(([l, v, s]) => `<div class="kpi"><span class="l">${l}</span><span class="v">${v}</span><span class="s">${s}</span></div>`).join('');
+
+// Line chart with crosshair
+function lineChart(host, labels, series, opts) {
+  const W = 1000, H = opts.h || 320, m = { l: 64, r: 16, t: 12, b: 28 };
+  const n = labels.length, dates = labels.map(r => new Date(r));
+  const t0 = +dates[0], t1 = +dates[n - 1];
+  const all = series.flatMap(s => s.vals);
+  let lo = Math.min(...all), hi = Math.max(...all);
+  if (opts.zeroTop) hi = 0;
+  const step = opts.step, y0 = Math.floor(lo / step) * step, y1 = Math.ceil(hi / step) * step;
+  const X = t => m.l + (t - t0) / (t1 - t0) * (W - m.l - m.r);
+  const Y = v => m.t + (y1 - v) / (y1 - y0) * (H - m.t - m.b);
+  const svg = el('svg', { viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': opts.label });
+  // OOS shading
+  if (opts.oos) { const xo = X(+new Date('2024-01-01')); el('rect', { x: xo, y: m.t, width: W - m.r - xo, height: H - m.t - m.b, fill: css('--grid') }, svg);
+    const tx = el('text', { x: xo + 6, y: m.t + 14 }, svg); tx.textContent = 'out-of-sample'; }
+  for (let v = y0; v <= y1 + 1e-9; v += step) {
+    el('line', { x1: m.l, x2: W - m.r, y1: Y(v), y2: Y(v), stroke: css('--line'), 'stroke-width': 1 }, svg);
+    const t = el('text', { x: m.l - 8, y: Y(v) + 4, 'text-anchor': 'end' }, svg); t.textContent = opts.yfmt(v);
+  }
+  for (let y = dates[0].getFullYear() + 1; y <= dates[n - 1].getFullYear(); y++) {
+    const x = X(+new Date(y + '-01-01'));
+    const t = el('text', { x, y: H - 8, 'text-anchor': 'middle' }, svg); t.textContent = y;
+    el('line', { x1: x, x2: x, y1: H - m.b, y2: H - m.b + 4, stroke: css('--ink-3') }, svg);
+  }
+  series.forEach(s => {
+    const d = s.vals.map((v, i) => (i ? 'L' : 'M') + X(+dates[i]).toFixed(1) + ',' + Y(v).toFixed(1)).join('');
+    if (s.area) el('path', { d: d + `L${X(t1)},${Y(0)}L${X(t0)},${Y(0)}Z`, fill: s.color, 'fill-opacity': .18 }, svg);
+    el('path', { d, fill: 'none', stroke: s.color, 'stroke-width': 2, 'stroke-linejoin': 'round' }, svg);
+  });
+  const cross = el('line', { y1: m.t, y2: H - m.b, stroke: css('--ink-3'), 'stroke-dasharray': '3 3', visibility: 'hidden' }, svg);
+  const dots = series.map(s => el('circle', { r: 4.5, fill: s.color, stroke: css('--surface'), 'stroke-width': 2, visibility: 'hidden' }, svg));
+  host.appendChild(svg);
+  const tip = document.createElement('div'); tip.className = 'tip'; tip.hidden = true; host.appendChild(tip);
+  svg.addEventListener('pointermove', e => {
+    const r = svg.getBoundingClientRect(), px = (e.clientX - r.left) / r.width * W;
+    const t = t0 + (px - m.l) / (W - m.l - m.r) * (t1 - t0);
+    let i = 0, best = Infinity; dates.forEach((d, k) => { const g = Math.abs(+d - t); if (g < best) { best = g; i = k; } });
+    const x = X(+dates[i]); cross.setAttribute('x1', x); cross.setAttribute('x2', x); cross.setAttribute('visibility', 'visible');
+    dots.forEach((c, k) => { c.setAttribute('cx', x); c.setAttribute('cy', Y(series[k].vals[i])); c.setAttribute('visibility', 'visible'); });
+    tip.innerHTML = `<div>${labels[i]}</div>` + series.map(s => `<div><span style="color:${s.color}">■</span> ${s.name}: <b>${opts.tfmt(s.vals[i])}</b></div>`).join('');
+    tip.hidden = false;
+    const left = x / W * r.width; tip.style.top = '8px';
+    tip.style.left = (left > r.width * .6 ? left - tip.offsetWidth - 12 : left + 12) + 'px';
+  });
+  svg.addEventListener('pointerleave', () => { tip.hidden = true; cross.setAttribute('visibility', 'hidden'); dots.forEach(c => c.setAttribute('visibility', 'hidden')); });
+}
+function drawCharts() {
+  ['eq', 'dd', 'eq2'].forEach(id => document.getElementById(id).innerHTML = '');
+  lineChart(document.getElementById('eq'), D.curve.map(r => r[0]), [
+    { name: 'Strategy', color: css('--accent'), vals: D.curve.map(r => r[1]) },
+    { name: 'Nifty', color: css('--bench'), vals: D.curve.map(r => r[2]) }],
+    { label: 'Equity curve of strategy vs Nifty buy and hold', step: 100000, yfmt: v => '₹' + (v / 1e5) + 'L', tfmt: fmtR, oos: true });
+  lineChart(document.getElementById('dd'), D.curve.map(r => r[0]), [{ name: 'Drawdown', color: css('--neg'), vals: D.curve.map(r => r[3]), area: true }],
+    { label: 'Strategy drawdown from peak', h: 200, step: 10, zeroTop: true, yfmt: v => v + '%', tfmt: v => v.toFixed(1) + '%' });
+  lineChart(document.getElementById('eq2'), D2.curve2.map(r => r[0]), [
+    { name: 'Confirmed spread', color: css('--s2'), vals: D2.curve2.map(r => r[1]) },
+    { name: 'Weekly strangle', color: css('--accent'), vals: D2.curve2.map(r => r[2]) },
+    { name: 'Nifty', color: css('--bench'), vals: D2.curve2.map(r => r[3]) }],
+    { label: 'Confirmed spread vs strangle vs Nifty from May 2022', step: 200000, yfmt: v => '₹' + (v / 1e5) + 'L', tfmt: fmtR, oos: true });
+}
+drawCharts();
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', drawCharts);
+new MutationObserver(drawCharts).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+
+// Heatmap (diverging, capped at ±8%)
+(function () {
+  const h = document.getElementById('heat'), M = D.monthly_returns;
+  const mons = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  let html = '<div class="h"></div>' + mons.map(x => `<div class="h">${x}</div>`).join('') + '<div class="h">Year</div>';
+  const years = [...new Set(Object.keys(M).map(k => k.slice(0, 4)))];
+  years.forEach(y => {
+    html += `<div class="yr">${y}</div>`;
+    for (let i = 1; i <= 12; i++) {
+      const k = `${y}-${String(i).padStart(2, '0')}`, v = M[k];
+      if (v === undefined) { html += '<div></div>'; continue; }
+      const a = Math.min(Math.abs(v) / 8, 1), c = v >= 0 ? 'var(--pos)' : 'var(--neg)';
+      const strong = a > .55;
+      html += `<div class="c" title="${mons[i-1]} ${y}: ${pct(v, 2)}" style="background:color-mix(in srgb, ${c} ${Math.round(a * 85 + 8)}%, var(--mid));color:${strong ? '#fff' : 'var(--ink)'}">${v.toFixed(1)}</div>`;
+    }
+    const yr = D.yearly[y]; html += `<div class="tot">${yr ? pct(yr.return_pct) : ''}</div>`;
+  });
+  h.innerHTML = html;
+})();
+
+// Tables
+const row = (cells, head) => '<tr>' + cells.map((c, i) => `<${head ? 'th' : 'td'} class="${i ? 'n' : ''}">${c}</${head ? 'th' : 'td'}>`).join('') + '</tr>';
+const I = D.in_sample;
+document.getElementById('split').innerHTML =
+  '<thead>' + row(['', '2021–2023 (tuning)', '2024–2026 (unseen)', 'Full period'], true) + '</thead><tbody>' +
+  [['CAGR', x => pct(x.cagr_pct)], ['Max drawdown', x => pct(x.max_dd_pct)], ['Sharpe', x => x.sharpe_weekly_ann.toFixed(2)],
+   ['Win rate', x => x.win_rate_pct + '%'], ['Profit factor', x => x.profit_factor], ['Average win / loss', x => pct(x.avg_win_pct, 2) + ' / ' + pct(x.avg_loss_pct, 2)],
+   ['Stops hit', x => `${x.stops_hit} of ${x.trades}`]]
+    .map(([l, f]) => row([l, f(I), f(O), f(F)])).join('') + '</tbody>';
+
+const C = D.costs, gross = C.net + C.stat + C.fixed;
+const parts = [['Kept as net profit', C.net, 'var(--accent)'], ['Fixed running costs', C.fixed, 'var(--bench)'], ['Brokerage, STT, fees, GST', C.stat, 'var(--neg)']];
+document.getElementById('costbar').innerHTML = parts.map(p => `<span style="width:${p[1] / gross * 100}%;background:${p[2]}"></span>`).join('');
+document.getElementById('costbar').setAttribute('aria-label', parts.map(p => `${p[0]} ${(p[1] / gross * 100).toFixed(0)}%`).join(', '));
+document.getElementById('costtbl').innerHTML = '<tbody>' +
+  row(['Gross profit after slippage', fmtR(gross)]) +
+  parts.map(p => row([`<span style="color:${p[2]}">■</span> ${p[0]}`, `${fmtR(p[1])} · ${(p[1] / gross * 100).toFixed(0)}%`])).join('') +
+  row(['CAGR without fixed costs', pct(D.no_running_costs.cagr_pct)]) + '</tbody>';
+
+const S = D.stress_double_slippage;
+document.getElementById('stress').innerHTML = '<thead>' + row(['Scenario', 'CAGR', 'Max DD'], true) + '</thead><tbody>' +
+  row(['Base case', pct(F.cagr_pct), pct(F.max_dd_pct)]) +
+  row(['Slippage doubled', pct(S.cagr_pct), pct(S.max_dd_pct)]) +
+  row(['No fixed running costs', pct(D.no_running_costs.cagr_pct), pct(D.no_running_costs.max_dd_pct)]) +
+  row(['Nifty buy &amp; hold', pct(D.benchmark_nifty_cagr_pct), pct(D.benchmark_nifty_maxdd_pct)]) + '</tbody>';
+const MC = D.monte_carlo;
+document.getElementById('mc').innerHTML = '<tbody>' +
+  row(['Median CAGR', pct(MC.cagr_p50)]) + row(['Bad case CAGR (5th percentile)', pct(MC.cagr_p5)]) +
+  row(['Good case CAGR (95th percentile)', pct(MC.cagr_p95)]) + row(['Typical max drawdown', pct(MC.maxdd_p50)]) +
+  row(['1-in-20 max drawdown', pct(MC.maxdd_p95_worst)]) + row(['1-in-100 max drawdown', pct(MC.maxdd_p99_worst)]) +
+  row(['Chance of losing money over 5 years', MC.prob_loss_over_horizon_pct.toFixed(1) + '%']) + '</tbody>';
+document.getElementById('worst').innerHTML = '<thead>' + row(['Entered', 'Exited', 'Exit', 'VIX at entry', 'Return on equity'], true) + '</thead><tbody>' +
+  D.worst_trades.map(w => row([w.entry, w.exit, w.reason === 'stop' ? 'Stop-loss' : 'Expiry', w.vix == null || isNaN(w.vix) ? 'n/a' : Number(w.vix).toFixed(1), pct(w.ret_pct, 2)])).join('') + '</tbody>';
+
+// Strategy 2 section
+(function () {
+  const P = D2.pv, sigName = { fii_opt_chg: 'FII index-options change', pa_gap: 'Opening gap (09:30 vs prev close)', pa_mom5: '5-day price momentum', pcr_entry: 'PCR from option OI', fii_chg_z: 'FII index-futures change' };
+  const pill = p => `<span class="pill ${p < 0.05 ? 'ok' : p < 0.15 ? 'warn' : 'no'}">${p.toFixed(3)}</span>`;
+  let h = '<thead>' + row(['Signal (p-value)', 'Credit spread 21–23', 'Credit spread 24–26', 'Debit spread 21–23', 'Debit spread 24–26'], true) + '</thead><tbody>';
+  ['fii_opt_chg', 'pa_gap', 'pa_mom5', 'pcr_entry', 'fii_chg_z'].forEach(k => {
+    const c = P['credit|' + k], d = P['debit_tp1.0|' + k];
+    h += row([sigName[k], pill(c.IS), pill(c.OOS), pill(d.IS), pill(d.OOS)]);
+  });
+  document.getElementById('sigtbl').innerHTML = h + '</tbody>';
+  const S2 = D2.s2, F2 = S2.full, O2 = S2.out_of_sample_2024_26, MC2 = S2.monte_carlo;
+  document.getElementById('kpis2').innerHTML = [
+    ['CAGR, net of all costs', pct(F2.cagr_pct), 'May 2022 – Sep 2026'],
+    ['CAGR, 2024–26', pct(O2.cagr_pct), `2022–23: ${pct(S2.in_sample_2022_23.cagr_pct)}`],
+    ['Max drawdown', pct(F2.max_dd_pct), `worst week ${pct(F2.worst_week_pct)}`],
+    ['Win rate', F2.win_rate_pct.toFixed(1) + '%', `${F2.trades} trades`],
+    ['Sharpe', F2.sharpe_weekly_ann.toFixed(2), `profit factor ${F2.profit_factor}`],
+    ['Monte Carlo, 5 yrs median', pct(MC2.cagr_p50), `bad case ${pct(MC2.cagr_p5)} · 1-in-20 DD ${pct(MC2.maxdd_p95_worst)}`],
+  ].map(([l, v, s]) => `<div class="kpi"><span class="l">${l}</span><span class="v">${v}</span><span class="s">${s}</span></div>`).join('');
+  const A = S2.strangle_only_same_period, PF = S2.portfolio_50_50;
+  document.getElementById('cmp2').innerHTML = '<thead>' + row(['', 'Spread', 'Strangle', '50/50 both'], true) + '</thead><tbody>' +
+    [['CAGR', x => pct(x.cagr_pct)], ['Max drawdown', x => pct(x.max_dd_pct)], ['Worst week', x => pct(x.worst_week_pct)],
+     ['Sharpe', x => x.sharpe_weekly_ann.toFixed(2)], ['Win rate', x => x.win_rate_pct + '%']]
+      .map(([l, f]) => row([l, f(F2), f(A), f(PF)])).join('') + '</tbody>';
+})();
+
+// Strategy 2 trade analysis: monthly bars + losers table
+function drawBars() {
+  const host = document.getElementById('mbar'); host.innerHTML = '';
+  const M = D3.monthly, W = 1000, H = 260, m = { l: 48, r: 12, t: 12, b: 30 };
+  const vals = M.map(r => r[1]);
+  const lo = Math.floor(Math.min(...vals) / 4) * 4, hi = Math.ceil(Math.max(...vals) / 4) * 4;
+  const Y = v => m.t + (hi - v) / (hi - lo) * (H - m.t - m.b);
+  const bw = (W - m.l - m.r) / M.length;
+  const svg = el('svg', { viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': 'Strategy 2 monthly returns, Jan 2024 to Apr 2026' });
+  const iB = M.findIndex(r => r[0] === '2025-12');
+  el('rect', { x: m.l + iB * bw, y: m.t, width: (M.length - iB) * bw, height: H - m.t - m.b, fill: css('--grid') }, svg);
+  for (let v = lo; v <= hi; v += 4) {
+    el('line', { x1: m.l, x2: W - m.r, y1: Y(v), y2: Y(v), stroke: css('--line'), 'stroke-width': v === 0 ? 1.5 : 1 }, svg);
+    const t = el('text', { x: m.l - 8, y: Y(v) + 4, 'text-anchor': 'end' }, svg); t.textContent = v + '%';
+  }
+  const tip = document.createElement('div'); tip.className = 'tip'; tip.hidden = true;
+  M.forEach((r, i) => {
+    const [mon, v, n, bull, bear, vix] = r, x = m.l + i * bw;
+    if (mon.endsWith('-01') || i === 0) { const t = el('text', { x: x + bw / 2, y: H - 10, 'text-anchor': 'middle' }, svg); t.textContent = mon.slice(0, 4); }
+    const hit = el('rect', { x, y: m.t, width: bw, height: H - m.t - m.b, fill: 'transparent' }, svg);
+    if (n) {
+      const y0 = Y(0), y1 = Y(v), h = Math.max(1.5, Math.abs(y1 - y0));
+      el('rect', { x: x + bw * .18, y: Math.min(y0, y1), width: bw * .64, height: h, rx: 2, fill: v >= 0 ? css('--pos') : css('--neg') }, svg);
+    }
+    hit.addEventListener('pointerenter', () => {
+      tip.innerHTML = `<div>${mon}</div>` + (n ? `<div>Return: <b>${pct(v)}</b></div><div>${n} trade${n > 1 ? 's' : ''}: ${bull} bull put, ${bear} bear call</div><div>Avg VIX ${vix}</div>` : '<div>No trade</div>');
+      tip.hidden = false;
+      const r2 = svg.getBoundingClientRect(), left = (x + bw / 2) / W * r2.width;
+      tip.style.top = '8px'; tip.style.left = (left > r2.width * .6 ? left - tip.offsetWidth - 10 : left + 10) + 'px';
+    });
+    hit.addEventListener('pointerleave', () => { tip.hidden = true; });
+  });
+  host.appendChild(svg); host.appendChild(tip);
+}
+drawBars();
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', drawBars);
+new MutationObserver(drawBars).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+document.getElementById('losersB').innerHTML = '<thead>' + row(['Losing trades, Dec 2025 – Apr 2026', 'Side', 'VIX', 'Nifty vs 20-day avg', 'Short strike distance', 'Week move', 'Return'], true) + '</thead><tbody>' +
+  D3.losersB.map(r => row([r.entry, r.dir > 0 ? 'Bull put' : 'Bear call', r.vix.toFixed(1), pct(r.px_vs_ema20, 2), r.offset_pct.toFixed(2) + '%', pct(r.week_move_pct, 2), pct(r.ret_pct, 2)])).join('') + '</tbody>';
+</script>
