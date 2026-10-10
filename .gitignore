@@ -22,3 +22,6 @@ secrets*.json
 .vscode/
 .idea/
 *.log
+
+# Separate git repo (alert bot)
+bear_call_bot/
