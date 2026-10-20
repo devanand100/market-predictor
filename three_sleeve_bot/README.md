@@ -25,6 +25,7 @@ everything to MongoDB and posts **one Discord message per run** to a single chan
 | `notify.py` | Discord webhook; collects embeds and flushes once per run |
 | `market_calendar.py` | IST, NSE holidays, weekly cycle, monthly expiries |
 | `deploy.py` / `invoke.py` / `setup_discord.py` | Deploy (no fallbacks), manual actions, one-off Discord setup |
+| `api.py` + `dashboard/` | Trade-journal dashboard (same page as the Claude artifact): `python three_sleeve_bot/dashboard/build_preview.py [--mongo]` → `dashboard/preview.html`. Lambda hosting planned in `docs/DASHBOARD_PLAN.md` |
 
 ## Schedule (EventBridge Scheduler, Asia/Kolkata, weekdays; holidays skipped in code)
 RENEW_TOKEN 06:00 + 18:00 daily · RECONCILE 08:15 · HEARTBEAT 08:45 · SNAPSHOT_0920 09:21 · ENTRY_0931 09:31 ·

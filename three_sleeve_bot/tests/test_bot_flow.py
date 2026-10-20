@@ -204,6 +204,28 @@ def test_errors_are_notified_once_per_day(bot):
     assert sum(errs.values()) == 50
 
 
+def test_dashboard_rows_match_sample_schema(bot):
+    """The journal must yield the same columns as dashboard/sample/*.json so the same page can show paper trades."""
+    import json
+    from pathlib import Path
+    import api
+    run("SNAPSHOT_0920", WEEK[0])
+    run("ENTRY_0931", WEEK[0])
+    gap = bot.trades.find_one({"sleeve": "GAP"})
+    FakeDhan.overrides[gap["legs"][0]["sid"]] = gap["target"] + 1
+    run("TICK", WEEK[0], "10:01")
+    run("EOD", WEEK[0])
+    sample = Path(__file__).resolve().parents[1] / "dashboard" / "sample"
+    want_t = set(json.loads((sample / "trades.json").read_text())[0])
+    want_d = set(json.loads((sample / "daily.json").read_text())[0])
+    t, d = api.trades_rows(), api.daily_rows()
+    assert len(t) == 1 and set(t[0]) == want_t
+    assert t[0]["entry_px"] and t[0]["exit_px"] and t[0]["ret_pct"] and t[0]["equity_after"]
+    assert t[0]["equity_after"] == pytest.approx(1_500_000 + t[0]["pnl"], abs=1)
+    assert len(d) == 1 and set(d[0]) == want_d
+    assert d[0]["trades_closed"] == 1 and d[0]["running_costs"] == 1990
+
+
 def test_write_budget_one_day(bot):
     db = bot
     counts = {"n": 0}

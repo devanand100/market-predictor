@@ -115,13 +115,16 @@ def close_position(ctx, item, prices, reason, urgent, today):
         gross += side * (xf - fill) * qty
         ch = costs.add_charges(ch, costs.option_fill_charges(xf, qty, side < 0, today))
         exits.append({"sid": sid, "typ": typ, "K": K, "ltp": px, "fill": round(xf, 2)})
-    tr = J.db().trades.find_one({"_id": item["tid"]}, {"ch_in": 1})
+    tr = J.db().trades.find_one({"_id": item["tid"]}, {"ch_in": 1, "eq_before": 1})
     ch_in = (tr or {}).get("ch_in") or {}
     charges = costs.add_charges(ch_in, ch)
     net = gross - sum(charges.values())
+    eq_before = (tr or {}).get("eq_before") or 0
     fields = {"status": "closed", "exit_reason": reason, "exit_d": today, "exit_ts": dt.datetime.now(dt.timezone.utc),
               "exit_legs": exits, "ch_out": ch, "charges": {k: round(v, 2) for k, v in charges.items()},
-              "charges_total": round(sum(charges.values()), 2), "gross": round(gross, 2), "net": round(net, 2)}
+              "charges_total": round(sum(charges.values()), 2), "gross": round(gross, 2), "net": round(net, 2),
+              "px_out": round(sum(x["fill"] for x in exits), 2),          # combined exit price (CE+PE for straddles/strangles)
+              "ret_pct": round(100 * net / eq_before, 3) if eq_before else None}
     return net, fields
 
 
@@ -131,8 +134,11 @@ def apply_closes(ctx, state, closes, prices, today, title_prefix=""):
         return state.get("open") or []
     remaining = [x for x in state.get("open") or [] if x["tid"] not in {c[0]["tid"] for c in closes}]
     realised = 0.0
+    eq = equity(state)
     for item, reason, urgent in closes:
         net, fields = close_position(ctx, item, prices, reason, urgent, today)
+        eq += net
+        fields["equity_after"] = round(eq)                              # realised equity after this trade
         J.close_trade(item["tid"], fields)
         realised += net
         color = N.GREEN if net >= 0 else N.RED
@@ -272,7 +278,8 @@ def a_entry(ctx, event, dry=False):
                 doc = {"_id": tid, "src": "paper", "status": "open", "sleeve": "L2", "key": f"L2|{today}|t{cyc['i']}",
                        "ckey": f"L2|{l2_state['first']}", "tranche": cyc["i"], "expiry": expiry, "entry_d": today,
                        "entry_ts": dt.datetime.now(dt.timezone.utc), "legs": legs, "lots": l2_state["per"], "qty": qty,
-                       "credit": round(credit, 2), "stop_sum": round(2.5 * (legs[0]["fill"] + legs[1]["fill"]), 2),
+                       "credit": round(credit, 2), "px_in": round(legs[0]["fill"] + legs[1]["fill"], 2),
+                       "stop_sum": round(2.5 * (legs[0]["fill"] + legs[1]["fill"]), 2),
                        "exit_plan": expiry, "ch_in": ch, "eq_before": round(eq),
                        "margin_model": round(R.margin_model(spot, l2_state["per"])), "in": inputs}
                 new_open.append((doc, compact(tid, "L2", legs, {"exp": expiry, "xd": expiry,
@@ -305,7 +312,8 @@ def a_entry(ctx, event, dry=False):
                 doc = {"_id": tid, "src": "paper", "status": "open", "sleeve": "GAP", "key": f"GAP|{today}",
                        "ckey": f"GAP|{today}", "expiry": expiry, "entry_d": today,
                        "entry_ts": dt.datetime.now(dt.timezone.utc), "legs": legs, "lots": lots, "qty": qty,
-                       "debit": round(fill * qty, 2), "target": round((1 + R.GAP_TP) * fill, 2), "exit_plan": expiry,
+                       "debit": round(fill * qty, 2), "px_in": round(fill, 2), "target": round((1 + R.GAP_TP) * fill, 2),
+                       "exit_plan": expiry,
                        "ch_in": entry_charges(legs, today), "eq_before": round(eq), "margin_model": round(fill * qty),
                        "in": g_in}
                 new_open.append((doc, compact(tid, "GAP", legs, {"exp": expiry, "xd": expiry, "tgt": doc["target"]})))
@@ -400,6 +408,7 @@ def a_monthly(ctx, event, dry=False):
                 doc = {"_id": tid, "src": "paper", "status": "open", "sleeve": "MON", "key": key, "ckey": f"MON|{today}",
                        "expiry": e, "entry_d": today, "entry_ts": dt.datetime.now(dt.timezone.utc), "legs": legs,
                        "lots": lots, "qty": qty, "credit": round((legs[0]["fill"] + legs[1]["fill"]) * qty, 2),
+                       "px_in": round(legs[0]["fill"] + legs[1]["fill"], 2),
                        "exit_plan": f"first session with DTE ≤ {R.MON_EXIT_DTE}", "ch_in": entry_charges(legs, today),
                        "eq_before": round(eq), "margin_model": round(R.margin_model(spot, lots)), "in": inputs}
                 dec = ("enter", f"sell {K} straddle ×{lots} lots, VRP {v:.2f}")
@@ -420,7 +429,7 @@ def a_monthly(ctx, event, dry=False):
 
 
 def a_tick(ctx, event):
-    st = J.db().state.find_one({"_id": J.STATE_ID}, {"open": 1, "flatten": 1, "dhan_token": 1, "realised": 1}) or {}
+    st = J.db().state.find_one({"_id": J.STATE_ID}, {"open": 1, "flatten": 1, "dhan_token": 1, "realised": 1, "running": 1}) or {}
     opened = st.get("open") or []
     if not opened and not st.get("flatten"):
         return {"open": 0}
@@ -491,7 +500,8 @@ def a_eod(ctx, event):
         by_sleeve[t["sleeve"]] = by_sleeve.get(t["sleeve"], 0) + t.get("net", 0)
     day_doc = {"equity": round(eq), "mark": round(mark), "unrealised": round(unreal), "realised_total": round(st.get("realised") or 0),
                "realised_today": round(sum(by_sleeve.values())), "by_sleeve": {k: round(v) for k, v in by_sleeve.items()},
-               "running_total": round(st.get("running") or 0), "peak": round(peak), "dd": round(dd, 5),
+               "running_total": round(st.get("running") or 0), "running_today": round(inc.get("running", 0)),
+               "closed_n": len(closed_today), "peak": round(peak), "dd": round(dd, 5),
                "open": [{"tid": x["tid"], "sl": x["sl"]} for x in opened], "margin_model": round(margin_model),
                "margin_dhan": margin_dhan, "spot": prices.get("spot"), "vix": prices.get("vix"),
                "mtm_path": st.get("mtm") or [], "errors": {k: v for k, v in (st.get("err") or {}).items() if k.startswith(today)}}
