@@ -1,7 +1,9 @@
 # Project Handover — Nifty Options Strategy Research (BACKOFF.md)
 
-**Updated:** 2026-09-30 · **Data:** DhanHQ 1-min Nifty weekly options (Jan 2021 – Sep 2026), 1-min spot, 1-min India VIX, NSE participant OI (FII/DII/Client/Pro, 2022–2026)
+**Updated:** 2026-09-30 · **Data:** DhanHQ 1-min Nifty weekly options (Jan 2021 – Sep 2026), 1-min spot, 1-min India VIX, NSE participant OI (FII/DII/Client/Pro, 2021–2026)
 
+
+> **Update 2026-10-20: participant OI extended to 2021 and Saturday mock sessions removed.** Strategy 2 now trades from May 2021: 144 trades, 6.5% CAGR, −18.6% DD (2021 −8.4%, 2022 +3.3%, 2023 +8.0%, 2024 +9.8%, 2025 +32.4%, 2026 YTD −6.2%). From May 2022 alone it is 12.2%, so the new 2021–Apr 2022 weeks are a failed fresh out-of-sample test. Strategy 1 unchanged (12.7%). The §3b numbers below are the pre-extension ones.
 
 > **Update 2026-10-01: engine fix.** Strikes outside Dhan's ±500-point window were being forward-filled with stale prices, which understated losses on deep in-the-money shorts. All numbers below are rerun on the fixed engine: Strategy 1 is 12.6% CAGR (was 11.1%) and Strategy 2 is 12.4% CAGR (was 18.0%). Trade-level findings are in `docs/STRATEGY_2_TRADE_ANALYSIS.md`.
 

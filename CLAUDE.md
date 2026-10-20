@@ -4,9 +4,9 @@ Research and backtesting of NIFTY weekly options strategies for a retail trader,
 
 ## Status (2026-10-01)
 - **Strategy 1, weekly strangle:** 12.6% CAGR 2021–26, −32.9% max drawdown. Code: `final_strategy.py`. Trades only full 5-session weeks (enters 4 sessions before expiry), so holiday weeks such as the Apr-2025 crash are skipped.
-- **Strategy 2, confirmed credit spread:** 12.4% CAGR 2022–26, −19.1% max drawdown. Bear calls carry it; bull puts barely break even. Recommended v2: skip credit < 23.2% of max loss, bull puts at half size → 11.4% CAGR, −8.4% DD. VIX and squeeze filters were rejected (`docs/STRATEGY_2_TRADE_ANALYSIS.md`). Full spec: `docs/STRATEGY_2_CONFIRMED_SPREAD.md`; exported rules: `strategies/confirmed_spread.json`.
+- **Strategy 2, confirmed credit spread:** 6.5% CAGR Jun 2021–Sep 2026, −18.6% max drawdown (2026-10-20, after participant OI was extended back to 2021: 2021 lost 8.4%; from May 2022 it is still 12.2%). Figures below predate that extension. Bear calls carry it; bull puts barely break even. Recommended v2: skip credit < 23.2% of max loss, bull puts at half size → 11.4% CAGR, −8.4% DD. VIX and squeeze filters were rejected (`docs/STRATEGY_2_TRADE_ANALYSIS.md`). Full spec: `docs/STRATEGY_2_CONFIRMED_SPREAD.md`; exported rules: `strategies/confirmed_spread.json`.
 - **Institutional structures** (`docs/INSTITUTIONAL_STRATEGIES.md`): delta-hedged ±1× strangle (futures, 1-lot band, 10 lots) = 26.3% CAGR / −14.1% DD (12.3% under pessimistic costs); time-staggered strangle = 20.2% / −20.1%. Ladders, leg-rolling and gamma scalping lose.
-- **Strategy 3, weekly gap-direction option buy** (`final_gap_buy.py`, `docs/OPTION_BUYING.md`): ATM CE/PE in the opening-gap direction, 4 DTE, +100% target, no stop, VIX ≤ 15, 5% of equity → 16.6% CAGR / −13.8% DD from ₹3L (manual, no running costs). All other buying ideas (ORB, 0DTE, long straddles, VIX > 15) fail OOS. ₹3L plan: 50/50 with Strategy 2 v2 = 19.3% CAGR / −9.3% DD (Jun 2022+, `research_buy_spread_combo.py`); checklist `docs/PAPER_TRADING_3L.md`.
+- **Strategy 3, weekly gap-direction option buy** (`final_gap_buy.py`, `docs/OPTION_BUYING.md`): ATM CE/PE in the opening-gap direction, 4 DTE, +100% target, no stop, VIX ≤ 15, 5% of equity → 16.6% CAGR / −13.8% DD from ₹3L (manual, no running costs). All other buying ideas (ORB, 0DTE, long straddles, VIX > 15) fail OOS. ₹3L plan: 50/50 with Strategy 2 v2 = 13.2% CAGR / −9.3% DD (Jun 2021+; 100% gap buy 17.9% / −13.8%, `research_buy_spread_combo.py`); checklist `docs/PAPER_TRADING_3L.md`.
 - **Monthly 45→21 DTE short straddle** (`docs/MONTHLY_OPTIONS.md`, `research_monthly_*.py`): VRP ≥ 2 filter → 20.5% CAGR / −23.1% DD; stops, re-centring and condors rejected.
 - Results and what was rejected: `BACKOFF.md`, section 2 (e.g. 0DTE straddles, FII futures signals, PCR, trend).
 - Report: `report/nifty_strategy_report.html` (open in a browser), rebuilt by `python report/build_report.py`. Published copy: https://claude.ai/artifact/9zrJVS9fsbgyGPQuMTkk8r
@@ -18,12 +18,13 @@ Research and backtesting of NIFTY weekly options strategies for a retail trader,
 4. NSE participant OI is used lagged one session (`prev_*` columns). Same-day values are look-ahead bias.
 5. Build the engine cache with `python -c "import engine; engine.load_days(rebuild=True)"`, not `python engine.py`, which breaks the pickle.
 6. 2025-10-21 (Muhurat) has no 09:30 option prices; long legs get the 0.05 intrinsic fallback. Skip days with no prices at the entry minute (`run_cycle` guards only shorts).
-7. Choose parameters on 2021–2023 only and treat 2024+ as out-of-sample. Compare any direction signal against always-bull, always-bear and random-direction baselines.
+7. Dhan spot contains NSE Saturday **mock** sessions (8 in 2021–22, fake moves up to +4.7%). `build_research_data.build_daily` drops weekend rows without options data; real special sessions (budget days, DR drills) stay.
+8. Choose parameters on 2021–2023 only and treat 2024+ as out-of-sample. Compare any direction signal against always-bull, always-bear and random-direction baselines.
 
 ## File map
 | File | Role |
 |---|---|
-| `nse_data_downloader.py` | Scrapes NSE participant OI → `data/processed/participant_oi_features.csv` |
+| `nse_data_downloader.py` | Scrapes NSE participant OI (2021-01 onward, incl. weekend special sessions) → `data/processed/participant_oi_features.csv` |
 | `update_market_data.py` | Incremental Dhan download of spot, VIX and options into `data/raw/minute_parquet/`, then rebuilds research data and the engine cache |
 | `build_research_data.py` | Dhan parquet → `options_1min.parquet` (wide, by absolute strike) + `daily_features.parquet` (spot, VIX, expiries, lagged FII) |
 | `engine.py` | Per-day [minute × strike] price matrices. `load_days()`, `load_daily()`, `Day.px/series`. Minute 0 = 09:15, 360 = 15:15 |
@@ -51,7 +52,7 @@ python update_market_data.py                           # fetch new Dhan data + r
 python build_research_data.py --rebuild                # after new Dhan data (~1.5 min)
 python -c "import engine; engine.load_days(rebuild=True)"   # after rebuilding data (~20 s)
 python final_strategy.py                               # Strategy 1 (~1 min)
-python final_spread_strategy.py                        # Strategy 2 (~10 s); must give 119 trades, final equity Rs 8,24,583
+python final_spread_strategy.py                        # Strategy 2 (~10 s); must give 144 trades, final equity Rs 6,96,876
 python research_trade_analysis.py && python report/build_report.py   # refresh the report
 ```
 

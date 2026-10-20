@@ -15,7 +15,7 @@ Three strategy tracks, all net of fees and slippage, contract-exact on 1-minute 
 The last task finished was the institutional research plus stress tests. Everything is written up in `docs/INSTITUTIONAL_STRATEGIES.md`.
 
 ## Next steps (in priority order)
-0. **Rs 3L track (2026-10-20):** Strategy 3 gap buy + Strategy 2 v2 50/50 = 19.3% CAGR / −9.3% DD (`docs/OPTION_BUYING.md` §5). Next: paper trade it with `docs/PAPER_TRADING_3L.md`. Monthly VRP≥2 straddle (`docs/MONTHLY_OPTIONS.md`) not yet sized for Rs 3L.
+0. **Rs 3L track (2026-10-20):** Strategy 3 gap buy + Strategy 2 v2 50/50 = 13.2% CAGR / −9.3% DD from Jun 2021 (was 19.3% from Jun 2022; Strategy 2 lost in the newly added 2021 weeks) (`docs/OPTION_BUYING.md` §5). Next: paper trade it with `docs/PAPER_TRADING_3L.md`. Monthly VRP≥2 straddle (`docs/MONTHLY_OPTIONS.md`) not yet sized for Rs 3L.
 1. **`final_institutional.py` for D2** (delta-hedged ±1× straddle strangle, futures hedge, 1-lot band). Reuse `research_institutional.run` and `Book`. Add:
    - compounding sizing in whole lots (at least 10 lots; below about ₹10L the hedge is too coarse);
    - the ₹1,990/month running costs;

@@ -1,214 +1,219 @@
 {
  "full": {
-  "start": "2022-05-27",
-  "end": "2026-09-01",
-  "years": 4.27,
-  "trades": 119,
-  "final_equity": 824583,
-  "cagr_pct": 12.4,
-  "max_dd_pct": -19.1,
-  "sharpe_weekly_ann": 1.46,
-  "sortino": 2.06,
-  "win_rate_pct": 84.0,
-  "avg_win_pct": 1.35,
-  "avg_loss_pct": -4.32,
-  "profit_factor": 1.56,
-  "worst_week_pct": -7.14,
-  "best_week_pct": 2.17,
+  "start": "2021-05-28",
+  "end": "2026-09-15",
+  "years": 5.3,
+  "trades": 144,
+  "final_equity": 696876,
+  "cagr_pct": 6.5,
+  "max_dd_pct": -18.6,
+  "sharpe_weekly_ann": 0.8,
+  "sortino": 0.9,
+  "win_rate_pct": 80.6,
+  "avg_win_pct": 1.29,
+  "avg_loss_pct": -4.0,
+  "profit_factor": 1.31,
+  "worst_week_pct": -7.1,
+  "best_week_pct": 2.71,
   "stops_hit": 0,
-  "statutory_costs": 45459,
-  "fixed_running_costs": 99500
+  "statutory_costs": 44565,
+  "fixed_running_costs": 125370
  },
  "in_sample_2022_23": {
-  "start": "2022-05-27",
+  "start": "2021-05-28",
   "end": "2023-12-14",
-  "years": 1.55,
-  "trades": 43,
-  "final_equity": 611029,
-  "cagr_pct": 13.8,
-  "max_dd_pct": -7.4,
-  "sharpe_weekly_ann": 1.81,
-  "sortino": 3.65,
-  "win_rate_pct": 86.0,
-  "avg_win_pct": 1.23,
-  "avg_loss_pct": -4.12,
-  "profit_factor": 1.76,
-  "worst_week_pct": -5.44,
-  "best_week_pct": 2.09,
+  "years": 2.55,
+  "trades": 66,
+  "final_equity": 511162,
+  "cagr_pct": 0.9,
+  "max_dd_pct": -13.8,
+  "sharpe_weekly_ann": 0.19,
+  "sortino": 0.2,
+  "win_rate_pct": 77.3,
+  "avg_win_pct": 1.08,
+  "avg_loss_pct": -3.42,
+  "profit_factor": 1.04,
+  "worst_week_pct": -6.38,
+  "best_week_pct": 1.94,
   "stops_hit": 0,
-  "statutory_costs": 13101,
-  "fixed_running_costs": 39800
+  "statutory_costs": 16842,
+  "fixed_running_costs": 63680
  },
  "out_of_sample_2024_26": {
   "start": "2024-01-05",
-  "end": "2026-09-01",
-  "years": 2.66,
-  "trades": 76,
-  "final_equity": 629010,
-  "cagr_pct": 9.0,
-  "max_dd_pct": -18.0,
-  "sharpe_weekly_ann": 0.98,
-  "sortino": 1.26,
-  "win_rate_pct": 82.9,
+  "end": "2026-09-15",
+  "years": 2.69,
+  "trades": 78,
+  "final_equity": 646494,
+  "cagr_pct": 10.0,
+  "max_dd_pct": -18.1,
+  "sharpe_weekly_ann": 1.06,
+  "sortino": 1.36,
+  "win_rate_pct": 83.3,
   "avg_win_pct": 1.38,
-  "avg_loss_pct": -4.72,
-  "profit_factor": 1.36,
-  "worst_week_pct": -6.58,
+  "avg_loss_pct": -4.75,
+  "profit_factor": 1.41,
+  "worst_week_pct": -6.68,
   "best_week_pct": 2.39,
   "stops_hit": 0,
-  "statutory_costs": 25333,
-  "fixed_running_costs": 59700
+  "statutory_costs": 25867,
+  "fixed_running_costs": 61690
  },
  "no_running_costs": {
-  "start": "2022-05-27",
-  "end": "2026-09-01",
-  "years": 4.27,
-  "trades": 119,
-  "final_equity": 920728,
-  "cagr_pct": 15.4,
+  "start": "2021-05-28",
+  "end": "2026-09-15",
+  "years": 5.3,
+  "trades": 144,
+  "final_equity": 912623,
+  "cagr_pct": 12.0,
   "max_dd_pct": -19.0,
-  "sharpe_weekly_ann": 1.66,
-  "sortino": 2.69,
-  "win_rate_pct": 84.9,
-  "avg_win_pct": 1.5,
-  "avg_loss_pct": -4.8,
-  "profit_factor": 1.64,
-  "worst_week_pct": -6.56,
-  "best_week_pct": 2.51,
+  "sharpe_weekly_ann": 1.4,
+  "sortino": 1.74,
+  "win_rate_pct": 81.2,
+  "avg_win_pct": 1.46,
+  "avg_loss_pct": -3.96,
+  "profit_factor": 1.58,
+  "worst_week_pct": -6.58,
+  "best_week_pct": 2.53,
   "stops_hit": 0,
-  "statutory_costs": 50080,
+  "statutory_costs": 53294,
   "fixed_running_costs": 0
  },
  "monte_carlo": {
   "paths": 10000,
   "horizon_years": 5,
-  "trades_per_year": 27.9,
-  "cagr_p5": 2.9,
-  "cagr_p50": 12.5,
-  "cagr_p95": 22.2,
-  "maxdd_p50": -15.7,
-  "maxdd_p95_worst": -27.9,
-  "maxdd_p99_worst": -35.7,
-  "prob_loss_over_horizon_pct": 1.64
+  "trades_per_year": 27.2,
+  "cagr_p5": -3.2,
+  "cagr_p50": 6.5,
+  "cagr_p95": 16.2,
+  "maxdd_p50": -19.3,
+  "maxdd_p95_worst": -35.7,
+  "maxdd_p99_worst": -44.6,
+  "prob_loss_over_horizon_pct": 13.06
  },
  "yearly": {
+  "2021": {
+   "trades": 15,
+   "return_pct": -8.4,
+   "win_rate": 66.7
+  },
   "2022": {
-   "trades": 18,
-   "return_pct": 10.2,
-   "win_rate": 83.3
+   "trades": 26,
+   "return_pct": 3.3,
+   "win_rate": 76.9
   },
   "2023": {
    "trades": 25,
-   "return_pct": 10.9,
-   "win_rate": 88.0
+   "return_pct": 8.0,
+   "win_rate": 84.0
   },
   "2024": {
-   "trades": 31,
-   "return_pct": 13.3,
-   "win_rate": 83.9
+   "trades": 30,
+   "return_pct": 9.8,
+   "win_rate": 83.3
   },
   "2025": {
-   "trades": 25,
-   "return_pct": 32.5,
-   "win_rate": 92.0
+   "trades": 26,
+   "return_pct": 32.4,
+   "win_rate": 92.3
   },
   "2026": {
-   "trades": 20,
-   "return_pct": -10.0,
-   "win_rate": 70.0
+   "trades": 22,
+   "return_pct": -6.2,
+   "win_rate": 72.7
   }
  },
  "direction_split": {
   "bear call": {
-   "n": 51,
-   "win": 90.2,
-   "avg_ret": 0.94
+   "n": 67,
+   "win": 82.1,
+   "avg_ret": 0.56
   },
   "bull put": {
-   "n": 68,
-   "win": 79.4,
-   "avg_ret": 0.08
+   "n": 77,
+   "win": 79.2,
+   "avg_ret": -0.0
   }
  },
- "avg_lots": 3.6,
- "avg_credit_pts": 45.2,
+ "avg_lots": 2.9,
+ "avg_credit_pts": 45.6,
  "worst_trades": [
   {
    "entry": "2026-03-18",
    "exit": "2026-03-24",
    "dir": "bull put",
-   "ret_pct": -7.14
-  },
-  {
-   "entry": "2026-08-26",
-   "exit": "2026-09-01",
-   "dir": "bull put",
-   "ret_pct": -6.13
-  },
-  {
-   "entry": "2023-11-10",
-   "exit": "2023-11-16",
-   "dir": "bear call",
-   "ret_pct": -5.44
-  },
-  {
-   "entry": "2024-05-24",
-   "exit": "2024-05-30",
-   "dir": "bull put",
-   "ret_pct": -5.34
+   "ret_pct": -7.1
   },
   {
    "entry": "2024-09-27",
    "exit": "2024-10-03",
    "dir": "bull put",
-   "ret_pct": -5.24
+   "ret_pct": -6.45
+  },
+  {
+   "entry": "2024-05-24",
+   "exit": "2024-05-30",
+   "dir": "bull put",
+   "ret_pct": -6.41
+  },
+  {
+   "entry": "2023-11-10",
+   "exit": "2023-11-16",
+   "dir": "bear call",
+   "ret_pct": -6.38
+  },
+  {
+   "entry": "2021-09-13",
+   "exit": "2021-09-16",
+   "dir": "bear call",
+   "ret_pct": -6.3
   },
   {
    "entry": "2023-06-23",
    "exit": "2023-06-28",
    "dir": "bear call",
-   "ret_pct": -5.17
+   "ret_pct": -6.07
   }
  ],
- "weekly_return_correlation": 0.16,
+ "weekly_return_correlation": 0.13,
  "portfolio_50_50": {
-  "start": "2022-01-13",
-  "end": "2026-09-01",
-  "years": 4.63,
-  "trades": 219,
-  "final_equity": 972942,
-  "cagr_pct": 15.5,
-  "max_dd_pct": -13.7,
-  "sharpe_weekly_ann": 1.25,
-  "sortino": 1.9,
+  "start": "2021-06-03",
+  "end": "2026-09-28",
+  "years": 5.32,
+  "trades": 244,
+  "final_equity": 942519,
+  "cagr_pct": 12.7,
+  "max_dd_pct": -15.5,
+  "sharpe_weekly_ann": 1.1,
+  "sortino": 1.71,
   "win_rate_pct": 72.1,
-  "avg_win_pct": 1.31,
-  "avg_loss_pct": -2.24,
-  "profit_factor": 1.49,
-  "worst_week_pct": -6.57,
-  "best_week_pct": 5.84,
+  "avg_win_pct": 1.24,
+  "avg_loss_pct": -2.22,
+  "profit_factor": 1.45,
+  "worst_week_pct": -6.28,
+  "best_week_pct": 5.98,
   "stops_hit": 0,
   "statutory_costs": 0,
-  "fixed_running_costs": 113430
+  "fixed_running_costs": 125370
  },
  "strangle_only_same_period": {
   "start": "2022-01-07",
-  "end": "2026-09-01",
-  "years": 4.65,
-  "trades": 178,
-  "final_equity": 1251870,
+  "end": "2026-09-28",
+  "years": 4.72,
+  "trades": 181,
+  "final_equity": 1267391,
   "cagr_pct": 21.8,
   "max_dd_pct": -16.3,
   "sharpe_weekly_ann": 1.28,
-  "sortino": 2.1,
+  "sortino": 2.11,
   "win_rate_pct": 71.3,
   "avg_win_pct": 2.33,
-  "avg_loss_pct": -3.82,
+  "avg_loss_pct": -3.8,
   "profit_factor": 1.5,
   "worst_week_pct": -8.82,
   "best_week_pct": 11.84,
-  "stops_hit": 42,
-  "statutory_costs": 58087,
-  "fixed_running_costs": 109450
+  "stops_hit": 43,
+  "statutory_costs": 59693,
+  "fixed_running_costs": 111440
  }
 }

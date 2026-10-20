@@ -91,13 +91,23 @@ class NSESession:
         return None
 
 
+def special_weekend_sessions() -> set[date]:
+    """Saturday/Sunday trading sessions (budget days, DR drills) seen in daily_features."""
+    path = PROCESSED_DIR / "daily_features.parquet"
+    if not path.exists():
+        return set()
+    idx = pd.to_datetime(pd.read_parquet(path, columns=["close"]).index)
+    return {d.date() for d in idx if d.weekday() >= 5}
+
+
 def get_trading_dates(start: date, end: date) -> list[date]:
-    """Generate weekday dates between start and end (inclusive).
+    """Generate weekday dates (plus known weekend special sessions) between start and end.
     Actual holiday filtering happens at download time (404 = skip)."""
+    weekend = special_weekend_sessions()
     dates = []
     current = start
     while current <= end:
-        if current.weekday() < 5:  # Mon-Fri
+        if current.weekday() < 5 or current in weekend:
             dates.append(current)
         current += timedelta(days=1)
     return dates
@@ -404,8 +414,8 @@ def main():
         description="Download historical NSE FII/DII participant-wise OI data for backtesting"
     )
     parser.add_argument(
-        "--start", default="2022-01-01",
-        help="Start date YYYY-MM-DD (default: 2022-01-01)"
+        "--start", default="2021-01-01",
+        help="Start date YYYY-MM-DD (default: 2021-01-01, start of the options data)"
     )
     parser.add_argument(
         "--end", default=None,

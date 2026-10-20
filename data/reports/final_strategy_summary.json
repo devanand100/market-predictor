@@ -15,23 +15,23 @@
  },
  "full": {
   "start": "2021-01-08",
-  "end": "2026-09-01",
-  "years": 5.65,
-  "trades": 216,
-  "final_equity": 977252,
-  "cagr_pct": 12.6,
+  "end": "2026-09-28",
+  "years": 5.72,
+  "trades": 219,
+  "final_equity": 989271,
+  "cagr_pct": 12.7,
   "max_dd_pct": -32.9,
   "sharpe_weekly_ann": 0.82,
-  "sortino": 1.35,
-  "win_rate_pct": 69.0,
+  "sortino": 1.36,
+  "win_rate_pct": 68.9,
   "avg_win_pct": 2.25,
-  "avg_loss_pct": -3.83,
+  "avg_loss_pct": -3.82,
   "profit_factor": 1.32,
   "worst_week_pct": -8.98,
   "best_week_pct": 9.54,
-  "stops_hit": 56,
-  "statutory_costs": 55161,
-  "fixed_running_costs": 133330
+  "stops_hit": 57,
+  "statutory_costs": 56445,
+  "fixed_running_costs": 135320
  },
  "in_sample": {
   "start": "2021-01-08",
@@ -55,23 +55,23 @@
  },
  "out_of_sample": {
   "start": "2024-01-05",
-  "end": "2026-09-01",
-  "years": 2.66,
-  "trades": 101,
-  "final_equity": 826174,
-  "cagr_pct": 20.8,
+  "end": "2026-09-28",
+  "years": 2.73,
+  "trades": 104,
+  "final_equity": 834691,
+  "cagr_pct": 20.7,
   "max_dd_pct": -15.5,
-  "sharpe_weekly_ann": 1.25,
-  "sortino": 1.89,
-  "win_rate_pct": 71.3,
-  "avg_win_pct": 2.24,
-  "avg_loss_pct": -3.66,
-  "profit_factor": 1.49,
+  "sharpe_weekly_ann": 1.24,
+  "sortino": 1.9,
+  "win_rate_pct": 71.2,
+  "avg_win_pct": 2.23,
+  "avg_loss_pct": -3.63,
+  "profit_factor": 1.48,
   "worst_week_pct": -8.15,
   "best_week_pct": 11.29,
-  "stops_hit": 23,
-  "statutory_costs": 23531,
-  "fixed_running_costs": 61690
+  "stops_hit": 24,
+  "statutory_costs": 24495,
+  "fixed_running_costs": 63680
  },
  "yearly": {
   "2021": {
@@ -100,60 +100,60 @@
    "win_rate": 81.6
   },
   "2026": {
-   "trades": 25,
-   "return_pct": 13.5,
-   "win_rate": 68.0
+   "trades": 28,
+   "return_pct": 14.9,
+   "win_rate": 67.9
   }
  },
  "monte_carlo": {
   "paths": 10000,
   "horizon_years": 5.0,
-  "cagr_p5": -1.0,
-  "cagr_p50": 17.8,
-  "cagr_p95": 39.1,
-  "maxdd_p50": -30.3,
+  "cagr_p5": -0.8,
+  "cagr_p50": 17.4,
+  "cagr_p95": 39.2,
+  "maxdd_p50": -30.4,
   "maxdd_p95_worst": -50.2,
-  "maxdd_p99_worst": -59.6,
-  "prob_loss_over_horizon_pct": 6.11
+  "maxdd_p99_worst": -59.5,
+  "prob_loss_over_horizon_pct": 5.84
  },
  "stress_double_slippage": {
   "start": "2021-01-08",
-  "end": "2026-09-01",
-  "years": 5.65,
-  "trades": 216,
-  "final_equity": 760674,
-  "cagr_pct": 7.7,
+  "end": "2026-09-28",
+  "years": 5.72,
+  "trades": 219,
+  "final_equity": 767596,
+  "cagr_pct": 7.8,
   "max_dd_pct": -37.1,
   "sharpe_weekly_ann": 0.54,
-  "sortino": 0.86,
-  "win_rate_pct": 68.1,
+  "sortino": 0.87,
+  "win_rate_pct": 68.0,
   "avg_win_pct": 2.24,
-  "avg_loss_pct": -3.99,
+  "avg_loss_pct": -3.98,
   "profit_factor": 1.18,
   "worst_week_pct": -9.21,
   "best_week_pct": 10.65,
-  "stops_hit": 58,
-  "statutory_costs": 49636,
-  "fixed_running_costs": 133330
+  "stops_hit": 59,
+  "statutory_costs": 50599,
+  "fixed_running_costs": 135320
  },
  "no_running_costs": {
   "start": "2021-01-08",
-  "end": "2026-09-01",
-  "years": 5.65,
-  "trades": 216,
-  "final_equity": 1344085,
+  "end": "2026-09-28",
+  "years": 5.72,
+  "trades": 219,
+  "final_equity": 1359793,
   "cagr_pct": 19.1,
   "max_dd_pct": -29.9,
   "sharpe_weekly_ann": 1.11,
-  "sortino": 1.9,
-  "win_rate_pct": 69.0,
+  "sortino": 1.91,
+  "win_rate_pct": 68.9,
   "avg_win_pct": 2.49,
   "avg_loss_pct": -3.87,
   "profit_factor": 1.46,
   "worst_week_pct": -8.94,
   "best_week_pct": 11.76,
-  "stops_hit": 56,
-  "statutory_costs": 69857,
+  "stops_hit": 57,
+  "statutory_costs": 71678,
   "fixed_running_costs": 0
  },
  "worst_trades": [
@@ -214,8 +214,8 @@
    "ret_pct": -6.28
   }
  ],
- "benchmark_nifty_cagr_pct": 9.6,
- "benchmark_nifty_maxdd_pct": -18.5,
+ "benchmark_nifty_cagr_pct": 8.4,
+ "benchmark_nifty_maxdd_pct": -17.0,
  "monthly_returns": {
   "2021-01": -2.31,
   "2021-02": 1.47,
@@ -284,7 +284,7 @@
   "2026-06": 1.3,
   "2026-07": 6.0,
   "2026-08": 5.8,
-  "2026-09": -1.49
+  "2026-09": -0.28
  },
  "equity_curve": [
   [
@@ -1150,6 +1150,18 @@
   [
    "2026-09-01",
    977252
+  ],
+  [
+   "2026-09-08",
+   996483
+  ],
+  [
+   "2026-09-22",
+   1020888
+  ],
+  [
+   "2026-09-28",
+   989271
   ]
  ]
 }

@@ -6,6 +6,8 @@ Full spec for rebuilding the strategy from scratch. The machine-readable copy is
 - [research_positional.py](../research_positional.py) (`run_cycle`, `cycles`)
 - [cost_model.py](../cost_model.py)
 
+> **2026-10-20:** with participant OI back to 2021 the backtest starts May 2021: 144 trades, 6.5% CAGR, −18.6% DD; 2021 lost 8.4%. The signal still works from May 2022 (12.2%) but failed on the newly testable 2021–Apr 2022 weeks. Numbers further down predate this.
+
 ## 1. Rules
 | Step | Rule |
 |---|---|

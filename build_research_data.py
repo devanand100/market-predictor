@@ -103,6 +103,12 @@ def build_daily(opt: pd.DataFrame):
     daily = daily.join(exp, how="left")
     daily.index = pd.to_datetime(daily.index)
     daily = daily.sort_index()
+    # Dhan spot includes NSE Saturday MOCK sessions (e.g. 2022-04-09, a fake +4.7%). Their closes
+    # would become Monday's "previous close" (gap signal) and pollute realised vol. Once options
+    # data exists, a weekend row is a real special session only if it has options data.
+    opt_dates = pd.to_datetime(pd.Series(opt["date"].unique()))
+    mock = (daily.index.weekday >= 5) & (daily.index >= opt_dates.min()) & ~daily.index.isin(opt_dates)
+    daily = daily[~mock]
 
     # Realised vol (close-to-close, 20d, annualised %)
     r = np.log(daily["close"]).diff()

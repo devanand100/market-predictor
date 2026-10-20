@@ -62,18 +62,19 @@ short legs (`px < 1.0`). Long-leg research must skip days with no prices at the 
 ## 5. Rs 3L portfolio: gap buy + Strategy 2 v2 (`research_buy_spread_combo.py`)
 Sleeve A = Strategy 3 (VIX ≤ 15, 5%); sleeve B = Strategy 2 v2 (skip credit < 23.2% of max loss,
 bear calls 8% risk, bull puts 4%). Each sleeve compounds on its own share; manual execution, no
-fixed costs. Period Jun 2022 – Sep 2026 (Strategy 2 needs participant OI from 2022).
+fixed costs. Period Jun 2021 – Sep 2026 (rerun 2026-10-20 after participant OI was extended to 2021;
+the first run, Jun 2022+, gave 50/50 = 19.3% / −9.3%).
 
-| Mix (A/B) | CAGR | Max DD | Sharpe | Worst week | 2022–23 | 2024–26 |
+| Mix (A/B) | CAGR | Max DD | Sharpe | Worst week | 2021–23 | 2024–26 |
 |---|---|---|---|---|---|---|
-| 100/0 | 23.3% | −13.2% | 1.39 | −5.0% | 15.4% | 28.5% |
-| 70/30 | 21.0% | −11.0% | 1.63 | −4.0% | 15.5% | 24.5% |
-| **50/50** | **19.3%** | **−9.3%** | **1.88** | **−3.5%** | 15.7% | 21.7% |
-| 30/70 | 17.5% | −7.9% | 2.20 | −4.0% | 15.8% | 18.8% |
-| 0/100 | 14.7% | −7.7% | 2.15 | −5.2% | 15.9% | 14.3% |
+| 100/0 | 17.9% | −13.8% | 1.27 | −5.0% | 7.9% | 28.5% |
+| 70/30 | 15.2% | −11.1% | 1.37 | −4.1% | 6.3% | 24.5% |
+| **50/50** | **13.2%** | **−9.3%** | **1.46** | **−3.7%** | 5.3% | 21.5% |
+| 30/70 | 11.1% | −8.6% | 1.55 | −4.4% | 4.2% | 18.2% |
+| 0/100 | 7.5% | −9.7% | 1.18 | −6.1% | 2.6% | 12.5% |
 
-50/50 by year: 2022 +3.4, 2023 +21.5, 2024 +24.4, 2025 +24.8, 2026 YTD +10.3.
-- Weekly return correlation 0.48 on the 40 weeks both traded: both use the opening gap.
-- The period skips 2021–22, when the gap buy lost money; at Rs 1.5L per sleeve each trade is
-  usually 1 lot, so live results will be lumpier.
+50/50 by year: 2021 −4.6, 2022 +2.7, 2023 +16.5, 2024 +20.9, 2025 +27.9, 2026 YTD +10.1.
+- Weekly return correlation 0.47 on the 42 weeks both traded: both use the opening gap.
+- Both sleeves lost in 2021; with the longer history Strategy 2 adds smoothness but little
+  return. At Rs 1.5L per sleeve each trade is usually 1 lot, so live results will be lumpier.
 - Weekly execution checklist: `docs/PAPER_TRADING_3L.md`.

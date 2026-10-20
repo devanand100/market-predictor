@@ -1,8 +1,8 @@
 # Paper-trading checklist: Rs 3L, 50/50 gap buy + credit spread
 
-Backtest (`research_buy_spread_combo.py`, Jun 2022 – Sep 2026, manual, net of charges):
-**19.3% CAGR, −9.3% max DD, worst week −3.5%.** By year: 2022 +3.4, 2023 +21.5, 2024 +24.4,
-2025 +24.8, 2026 YTD +10.3. Paper trade at least 8–12 weeks and compare with the backtest
+Backtest (`research_buy_spread_combo.py`, Jun 2021 – Sep 2026, manual, net of charges):
+**13.2% CAGR, −9.3% max DD, worst week −3.7%.** By year: 2021 −4.6, 2022 +2.7, 2023 +16.5,
+2024 +20.9, 2025 +27.9, 2026 YTD +10.1. (100% gap buy: 17.9% CAGR, −13.8% DD.) Paper trade at least 8–12 weeks and compare with the backtest
 before using money.
 
 Capital: Rs 1.5L sleeve A (gap buy), Rs 1.5L sleeve B (credit spread). Each sleeve compounds
