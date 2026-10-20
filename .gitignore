@@ -9,6 +9,7 @@ venv/
 data/processed/*.parquet
 data/processed/engine_cache.pkl
 data/raw/
+reports
 
 # Kept on purpose (small, slow or impossible to re-scrape exactly):
 #   data/processed/participant_oi_*.csv, nifty50_daily.csv, india_vix_daily.csv

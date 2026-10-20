@@ -58,3 +58,22 @@ Double slippage: VIX≤15 5% → 12.1% CAGR / −16.2% DD. With the Rs 1,990/mon
 2025-10-21 (Diwali Muhurat) has no 09:30 option prices; `Day.px` falls back to intrinsic
 (0.05 for OTM/ATM), so a long leg "bought" there shows a 300× gain. `run_cycle` only guards
 short legs (`px < 1.0`). Long-leg research must skip days with no prices at the entry minute.
+
+## 5. Rs 3L portfolio: gap buy + Strategy 2 v2 (`research_buy_spread_combo.py`)
+Sleeve A = Strategy 3 (VIX ≤ 15, 5%); sleeve B = Strategy 2 v2 (skip credit < 23.2% of max loss,
+bear calls 8% risk, bull puts 4%). Each sleeve compounds on its own share; manual execution, no
+fixed costs. Period Jun 2022 – Sep 2026 (Strategy 2 needs participant OI from 2022).
+
+| Mix (A/B) | CAGR | Max DD | Sharpe | Worst week | 2022–23 | 2024–26 |
+|---|---|---|---|---|---|---|
+| 100/0 | 23.3% | −13.2% | 1.39 | −5.0% | 15.4% | 28.5% |
+| 70/30 | 21.0% | −11.0% | 1.63 | −4.0% | 15.5% | 24.5% |
+| **50/50** | **19.3%** | **−9.3%** | **1.88** | **−3.5%** | 15.7% | 21.7% |
+| 30/70 | 17.5% | −7.9% | 2.20 | −4.0% | 15.8% | 18.8% |
+| 0/100 | 14.7% | −7.7% | 2.15 | −5.2% | 15.9% | 14.3% |
+
+50/50 by year: 2022 +3.4, 2023 +21.5, 2024 +24.4, 2025 +24.8, 2026 YTD +10.3.
+- Weekly return correlation 0.48 on the 40 weeks both traded: both use the opening gap.
+- The period skips 2021–22, when the gap buy lost money; at Rs 1.5L per sleeve each trade is
+  usually 1 lot, so live results will be lumpier.
+- Weekly execution checklist: `docs/PAPER_TRADING_3L.md`.

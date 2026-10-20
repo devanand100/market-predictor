@@ -17,6 +17,9 @@
 | Expiry-day (0DTE) short straddle | +₹108k, Sharpe ~5 | Lost in 2024, 2025 and 2026 | **Rejected** (edge died after SEBI Nov-2024 changes) |
 | FII futures-change directional futures trade | +₹2.19L | **−₹4.01L** | **Rejected**: every FII/DII signal flipped sign OOS |
 | Hedged iron condors (wings inside the ±500 data window) | Mostly negative | Mostly negative | Rejected (wings cost more than they save) |
+| Intraday ORB option buying (336 configs), 0DTE buying, long straddles/strangles | Some positive | ~0% positive OOS | Rejected (`docs/OPTION_BUYING.md`) |
+| **Weekly gap-direction ATM buy, +100% TP, VIX ≤ 15** | +14%/trade, p 0.014 | +24%/trade, p 0.002 | **Strategy 3** (`final_gap_buy.py`) |
+| Monthly 45→21 DTE short straddle, VRP ≥ 2 | 18.5% CAGR | 20.0% CAGR | Promising (`docs/MONTHLY_OPTIONS.md`) |
 | **Weekly expected-move short strangle** | Positive in all 36 parameter cells | **Positive in all 36 cells**, median Sharpe 1.03 | **Selected** |
 
 ## 3. Final strategy (`final_strategy.py`)
