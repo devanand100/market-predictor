@@ -6,6 +6,7 @@ Research and backtesting of NIFTY weekly options strategies for a retail trader,
 - **Strategy 1, weekly strangle:** 12.6% CAGR 2021–26, −32.9% max drawdown. Code: `final_strategy.py`. Trades only full 5-session weeks (enters 4 sessions before expiry), so holiday weeks such as the Apr-2025 crash are skipped.
 - **Strategy 2, confirmed credit spread:** 12.4% CAGR 2022–26, −19.1% max drawdown. Bear calls carry it; bull puts barely break even. Recommended v2: skip credit < 23.2% of max loss, bull puts at half size → 11.4% CAGR, −8.4% DD. VIX and squeeze filters were rejected (`docs/STRATEGY_2_TRADE_ANALYSIS.md`). Full spec: `docs/STRATEGY_2_CONFIRMED_SPREAD.md`; exported rules: `strategies/confirmed_spread.json`.
 - **Institutional structures** (`docs/INSTITUTIONAL_STRATEGIES.md`): delta-hedged ±1× strangle (futures, 1-lot band, 10 lots) = 26.3% CAGR / −14.1% DD (12.3% under pessimistic costs); time-staggered strangle = 20.2% / −20.1%. Ladders, leg-rolling and gamma scalping lose.
+- **Strategy 3, weekly gap-direction option buy** (`final_gap_buy.py`, `docs/OPTION_BUYING.md`): ATM CE/PE in the opening-gap direction, 4 DTE, +100% target, no stop, VIX ≤ 15, 5% of equity → 16.6% CAGR / −13.8% DD from ₹3L (manual, no running costs). All other buying ideas (ORB, 0DTE, long straddles, VIX > 15) fail OOS. ₹3L plan: 50/50 with Strategy 2 v2 = 19.3% CAGR / −9.3% DD (Jun 2022+, `research_buy_spread_combo.py`); checklist `docs/PAPER_TRADING_3L.md`.
 - Results and what was rejected: `BACKOFF.md`, section 2 (e.g. 0DTE straddles, FII futures signals, PCR, trend).
 - Report: `report/nifty_strategy_report.html` (open in a browser), rebuilt by `python report/build_report.py`. Published copy: https://claude.ai/artifact/9zrJVS9fsbgyGPQuMTkk8r
 
@@ -15,7 +16,8 @@ Research and backtesting of NIFTY weekly options strategies for a retail trader,
 3. Expiries are detected from the data (`daily_features.is_expiry`). Never hard-code Thursday.
 4. NSE participant OI is used lagged one session (`prev_*` columns). Same-day values are look-ahead bias.
 5. Build the engine cache with `python -c "import engine; engine.load_days(rebuild=True)"`, not `python engine.py`, which breaks the pickle.
-6. Choose parameters on 2021–2023 only and treat 2024+ as out-of-sample. Compare any direction signal against always-bull, always-bear and random-direction baselines.
+6. 2025-10-21 (Muhurat) has no 09:30 option prices; long legs get the 0.05 intrinsic fallback. Skip days with no prices at the entry minute (`run_cycle` guards only shorts).
+7. Choose parameters on 2021–2023 only and treat 2024+ as out-of-sample. Compare any direction signal against always-bull, always-bear and random-direction baselines.
 
 ## File map
 | File | Role |
@@ -31,6 +33,8 @@ Research and backtesting of NIFTY weekly options strategies for a retail trader,
 | `research_intraday.py`, `research_strangle.py`, `research_signals.py` | Earlier research grids |
 | `final_strategy.py` | Strategy 1 sized backtest, Monte Carlo, `metrics()` |
 | `final_spread_strategy.py` | Strategy 2 sized backtest + 50/50 portfolio with Strategy 1 |
+| `research_option_buying.py`, `research_option_buying_positional.py` | Option-buying grids (intraday ORB; long straddles and directional weekly buys) |
+| `final_gap_buy.py` | Strategy 3 sized backtest from ₹3L, Monte Carlo |
 | `research_trade_analysis.py` | Per-trade context for Strategy 2 → `spread_trades_enriched.csv` |
 | `research_institutional.py`, `research_institutional_stress.py` | Ladders, staggered entry, delta-hedged (Black-Scholes + futures), leg-rolling, gamma scalping; `Book` class handles options + futures with costs |
 | `research_vix_regime.py`, `research_vix_filters_bt.py` | VIX, reward-to-risk and squeeze (compression → expansion) filters |
