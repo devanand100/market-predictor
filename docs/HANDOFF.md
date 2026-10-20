@@ -15,7 +15,9 @@ Three strategy tracks, all net of fees and slippage, contract-exact on 1-minute 
 The last task finished was the institutional research plus stress tests. Everything is written up in `docs/INSTITUTIONAL_STRATEGIES.md`.
 
 ## Next steps (in priority order)
-0. **Strategy 4 (2026-10-20):** stacked strangle + low-VIX gap buy, 20.2% CAGR / −17.2% DD at Rs 10L with running costs (`docs/STACKED_STRATEGY.md`). Target not met below ~Rs 10L.
+0. **Strategy 5 paper bot (2026-10-20):** `three_sleeve_bot/` is built and tested (145 tests). Deploy is paused until AWS approves the Lambda concurrency increase (request `6ceaaf1faab043ccbb5c05894992bbb04eHF3V11`, 10 → 1000). Then: `python three_sleeve_bot/deploy.py --test`, confirm the SNS alarm email, remove the temporary `TempQuotaAndMetrics` policy from IAM user `dev`, watch the first week, then delete `bear_call_bot/` (its AWS schedules are already removed). Not built yet: `import_backtest.py` (load research trades into Mongo as `src="research"`).
+   **Strategy 5 (2026-10-20):** L2 + gap buy + monthly VRP straddle, 27.3% CAGR / −16.9% DD at Rs 10L after the rerun on rebuilt data (`docs/PORTFOLIO_STRATEGY.md`).
+   **Strategy 4 (2026-10-20):** stacked strangle + low-VIX gap buy, 20.2% CAGR / −17.2% DD at Rs 10L with running costs (`docs/STACKED_STRATEGY.md`). Target not met below ~Rs 10L.
    **Rs 3L track (2026-10-20):** Strategy 3 gap buy + Strategy 2 v2 50/50 = 13.2% CAGR / −9.3% DD from Jun 2021 (was 19.3% from Jun 2022; Strategy 2 lost in the newly added 2021 weeks) (`docs/OPTION_BUYING.md` §5). Next: paper trade it with `docs/PAPER_TRADING_3L.md`. Monthly VRP≥2 straddle (`docs/MONTHLY_OPTIONS.md`) not yet sized for Rs 3L.
 1. **`final_institutional.py` for D2** (delta-hedged ±1× straddle strangle, futures hedge, 1-lot band). Reuse `research_institutional.run` and `Book`. Add:
    - compounding sizing in whole lots (at least 10 lots; below about ₹10L the hedge is too coarse);

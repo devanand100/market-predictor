@@ -8,6 +8,8 @@ Research and backtesting of NIFTY weekly options strategies for a retail trader,
 - **Institutional structures** (`docs/INSTITUTIONAL_STRATEGIES.md`): delta-hedged ±1× strangle (futures, 1-lot band, 10 lots) = 26.3% CAGR / −14.1% DD (12.3% under pessimistic costs); time-staggered strangle = 20.2% / −20.1%. Ladders, leg-rolling and gamma scalping lose.
 - **Strategy 3, weekly gap-direction option buy** (`final_gap_buy.py`, `docs/OPTION_BUYING.md`): ATM CE/PE in the opening-gap direction, 4 DTE, +100% target, no stop, VIX ≤ 15, 5% of equity → 16.6% CAGR / −13.8% DD from ₹3L (manual, no running costs). All other buying ideas (ORB, 0DTE, long straddles, VIX > 15) fail OOS. ₹3L plan: 50/50 with Strategy 2 v2 = 13.2% CAGR / −9.3% DD (Jun 2021+; 100% gap buy 17.9% / −13.8%, `research_buy_spread_combo.py`); checklist `docs/PAPER_TRADING_3L.md`.
 - **Strategy 4, stacked strangle + low-VIX gap buy** (`final_stacked_strategy.py`, `docs/STACKED_STRATEGY.md`): Strategy 1 at 30% margin + Strategy 3 at 3% on VIX ≤ 15 weeks, same account → 20.2% CAGR / −17.2% DD at ₹10L with running costs (2021–23 10.5%, 2024–26 31.7%). Needs ~₹10L; at ₹3L 14.2% / −30.5%.
+- **Strategy 5, three-sleeve portfolio** (`final_portfolio_strategy.py`, `docs/PORTFOLIO_STRATEGY.md`): L2 staggered strangle 30% margin + gap buy 3% (VIX ≤ 15) + monthly straddle 20% margin (VRP ≥ 2) → 27.3% CAGR / −16.9% DD at ₹10L with running costs, every year positive (2021–23 18.4%, 2024–26 37.8%). At Nifty ~25k the L2 sleeve needs ~₹15L; does not work at ₹3L.
+- **Paper bot for Strategy 5:** `three_sleeve_bot/` (Lambda + EventBridge Scheduler + Dhan data + MongoDB journal + one Discord message per run). Read `three_sleeve_bot/README.md`. Deploy paused on the Lambda concurrency quota.
 - **Monthly 45→21 DTE short straddle** (`docs/MONTHLY_OPTIONS.md`, `research_monthly_*.py`): VRP ≥ 2 filter → 20.5% CAGR / −23.1% DD; stops, re-centring and condors rejected.
 - Results and what was rejected: `BACKOFF.md`, section 2 (e.g. 0DTE straddles, FII futures signals, PCR, trend).
 - Report: `report/nifty_strategy_report.html` (open in a browser), rebuilt by `python report/build_report.py`. Published copy: https://claude.ai/artifact/9zrJVS9fsbgyGPQuMTkk8r
@@ -39,6 +41,8 @@ Research and backtesting of NIFTY weekly options strategies for a retail trader,
 | `research_option_buying.py`, `research_option_buying_positional.py` | Option-buying grids (intraday ORB; long straddles and directional weekly buys) |
 | `final_gap_buy.py` | Strategy 3 sized backtest from ₹3L, Monte Carlo |
 | `research_regime_switch.py`, `final_stacked_strategy.py` | VIX switch / stacking of Strategies 1 and 3; Strategy 4 final backtest |
+| `three_sleeve_bot/` | Strategy 5 paper-trading bot (see its README); `rules.py` is parity-tested against the research |
+| `research_portfolio_sleeves.py`, `final_portfolio_strategy.py` | Multi-sleeve weight search (S1/L2/D2-pessimistic/gap/monthly/bear calls); Strategy 5 event-driven lot-exact backtest |
 | `research_trade_analysis.py` | Per-trade context for Strategy 2 → `spread_trades_enriched.csv` |
 | `research_institutional.py`, `research_institutional_stress.py` | Ladders, staggered entry, delta-hedged (Black-Scholes + futures), leg-rolling, gamma scalping; `Book` class handles options + futures with costs |
 | `research_vix_regime.py`, `research_vix_filters_bt.py` | VIX, reward-to-risk and squeeze (compression → expansion) filters |
