@@ -15,6 +15,7 @@ Three strategy tracks, all net of fees and slippage, contract-exact on 1-minute 
 The last task finished was the institutional research plus stress tests. Everything is written up in `docs/INSTITUTIONAL_STRATEGIES.md`.
 
 ## Next steps (in priority order)
+-2. **Strategy 6 paper bot (2026-10-22): deployed** at ₹3L (`strategy6_bot/`, 145 tests). It runs as Lambda `Strategy6PaperBot`, schedule group `strategy6`, Mongo `strategy6`, Discord `#strategy6-paper`. `three_sleeve_bot` was removed from AWS (code and Mongo data kept). Still to do: confirm the SNS alarm email (pending on 2026-10-22), watch the first weeks, and add next-morning reconciliation.
 -1. **Strategy 6 (2026-10-21), real-market replay:** `docs/STRATEGY_6_REALTRADE.md`. 38.7% CAGR / −13.5% DD / PF 1.76 at ₹10L (OOS 27.5% / 1.58). Next: paper trade 8+ weeks; rerun Strategies 1–5 on `research_realtrade.py` (intrinsic pricing inflated L2 from PF 1.40 to 1.03); add to report and bot.
 0. **Strategy 5 paper bot (2026-10-20):** `three_sleeve_bot/` is built and tested (145 tests). **Deployed 2026-10-21** (schedules live from 2026-10-22). Remaining: watch the first week, then delete `bear_call_bot/` (its AWS schedules are already removed). Not built yet: `import_backtest.py` (load research trades into Mongo as `src="research"`).
    **Dashboard (planned):** serve the artifact's trade-journal page from a separate Lambda Function URL reading MongoDB (`three_sleeve_bot/docs/DASHBOARD_PLAN.md`). Page, shim, sample data, `api.py` and the journal fields are done; Lambda + `import_backtest.py` are not.

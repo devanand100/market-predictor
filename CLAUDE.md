@@ -9,7 +9,9 @@ Research and backtesting of NIFTY weekly options strategies for a retail trader,
 - **Strategy 3, weekly gap-direction option buy** (`final_gap_buy.py`, `docs/OPTION_BUYING.md`): ATM CE/PE in the opening-gap direction, 4 DTE, +100% target, no stop, VIX ≤ 15, 5% of equity → 16.6% CAGR / −13.8% DD from ₹3L (manual, no running costs). All other buying ideas (ORB, 0DTE, long straddles, VIX > 15) fail OOS. ₹3L plan: 50/50 with Strategy 2 v2 = 13.2% CAGR / −9.3% DD (Jun 2021+; 100% gap buy 17.9% / −13.8%, `research_buy_spread_combo.py`); checklist `docs/PAPER_TRADING_3L.md`.
 - **Strategy 4, stacked strangle + low-VIX gap buy** (`final_stacked_strategy.py`, `docs/STACKED_STRATEGY.md`): Strategy 1 at 30% margin + Strategy 3 at 3% on VIX ≤ 15 weeks, same account → 20.2% CAGR / −17.2% DD at ₹10L with running costs (2021–23 10.5%, 2024–26 31.7%). Needs ~₹10L; at ₹3L 14.2% / −30.5%.
 - **Strategy 5, three-sleeve portfolio** (`final_portfolio_strategy.py`, `docs/PORTFOLIO_STRATEGY.md`): L2 staggered strangle 30% margin + gap buy 3% (VIX ≤ 15) + monthly straddle 20% margin (VRP ≥ 2) → 27.3% CAGR / −16.9% DD at ₹10L with running costs, every year positive (2021–23 18.4%, 2024–26 37.8%). At Nifty ~25k the L2 sleeve needs ~₹15L; does not work at ₹3L.
-- **Paper bot for Strategy 5:** `three_sleeve_bot/` (Lambda + EventBridge Scheduler + Dhan data + MongoDB journal + one Discord message per run). Read `three_sleeve_bot/README.md`. Deployed 2026-10-21; scheduled runs from 2026-10-22.
+- **Strategy 6, VIX-regime portfolio on a real-market replay** (`final_realtrade_strategy.py`, `docs/STRATEGY_6_REALTRADE.md`, 2026-10-21): previous-session VIX ≥ 15 → short strangle ±1.25× straddle 2 sessions before expiry (stop 1×) + expiry-day strangle ±0.5× (stop 0.5×), 45% margin each; VIX ≤ 13 → gap buy 5% → 38.7% CAGR / −13.5% DD / trade PF 1.76 at ₹10L with running costs (OOS 2024+ 27.5% / −13.4% / 1.58; every year positive). Simulator `research_realtrade.py` fills only at real traded prices, NSE lot size by date, margin cap. **It shows the old engine's intrinsic pricing inflated short strangles: L2 drops from PF 1.40 to 1.03 on real prices, so treat Strategy 5's numbers as optimistic.**
+- **Strategy 5 on real prices** (`docs/STRATEGY_5_REAL_CHECK.md`, 2026-10-21): at ₹15L it gives 19.3% CAGR / −20.7% DD / PF 1.41, not 29.4%. About 7.5 CAGR points were synthetic edge: L2 lost about 33% of its points and the monthly straddle up to 48%; the gap buy had none.
+- **Paper bot for Strategy 5 (removed from AWS 2026-10-22, replaced by `strategy6_bot/`):** `three_sleeve_bot/` (Lambda + EventBridge Scheduler + Dhan data + MongoDB journal + one Discord message per run). Read `three_sleeve_bot/README.md`. Deployed 2026-10-21; scheduled runs from 2026-10-22.
 - **Monthly 45→21 DTE short straddle** (`docs/MONTHLY_OPTIONS.md`, `research_monthly_*.py`): VRP ≥ 2 filter → 20.5% CAGR / −23.1% DD; stops, re-centring and condors rejected.
 - Results and what was rejected: `BACKOFF.md`, section 2 (e.g. 0DTE straddles, FII futures signals, PCR, trend).
 - Report: `report/nifty_strategy_report.html` (open in a browser), rebuilt by `python report/build_report.py`. Published copy: https://claude.ai/artifact/9zrJVS9fsbgyGPQuMTkk8r
@@ -41,6 +43,9 @@ Research and backtesting of NIFTY weekly options strategies for a retail trader,
 | `research_option_buying.py`, `research_option_buying_positional.py` | Option-buying grids (intraday ORB; long straddles and directional weekly buys) |
 | `final_gap_buy.py` | Strategy 3 sized backtest from ₹3L, Monte Carlo |
 | `research_regime_switch.py`, `final_stacked_strategy.py` | VIX switch / stacking of Strategies 1 and 3; Strategy 4 final backtest |
+| `strategy6_bot/` | Strategy 6 paper bot at ₹3L, deployed 2026-10-22 (Lambda `Strategy6PaperBot`, Mongo `strategy6`, Discord `#strategy6-paper`); `rules.py` is parity-tested against `research_realtrade.py`. See its README |
+| `research_realtrade.py` | Real-market replay: account + `Weekly` structures, real prices only, lot size by date, margin cap, `replay_many()` runs many accounts in one pass |
+| `research_realtrade_grid*.py`, `research_realtrade_portfolio.py`, `research_realtrade_sensitivity.py`, `final_realtrade_strategy.py` | Strategy 6: structure grids, sizing grid, VIX-threshold sensitivity, final backtest + stress tests |
 | `three_sleeve_bot/` | Strategy 5 paper-trading bot (see its README); `rules.py` is parity-tested against the research |
 | `research_portfolio_sleeves.py`, `final_portfolio_strategy.py` | Multi-sleeve weight search (S1/L2/D2-pessimistic/gap/monthly/bear calls); Strategy 5 event-driven lot-exact backtest |
 | `research_trade_analysis.py` | Per-trade context for Strategy 2 → `spread_trades_enriched.csv` |
@@ -58,6 +63,7 @@ python update_market_data.py                           # fetch new Dhan data + r
 python build_research_data.py --rebuild                # after new Dhan data (~1.5 min)
 python -c "import engine; engine.load_days(rebuild=True)"   # after rebuilding data (~20 s)
 python final_strategy.py                               # Strategy 1 (~1 min)
+python final_realtrade_strategy.py base               # Strategy 6 (~1 min); must give CAGR 38.7, DD -13.5, PF 1.76 (no arg = 9 stress cases, ~10 min)
 python final_spread_strategy.py                        # Strategy 2 (~10 s); must give 144 trades, final equity Rs 6,96,876
 python research_trade_analysis.py && python report/build_report.py   # refresh the report
 ```
