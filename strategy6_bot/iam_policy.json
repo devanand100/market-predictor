@@ -1,0 +1,26 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {"Sid": "Roles", "Effect": "Allow",
+     "Action": ["iam:CreateRole", "iam:GetRole", "iam:UpdateAssumeRolePolicy", "iam:DeleteRole", "iam:AttachRolePolicy",
+                "iam:DetachRolePolicy", "iam:PutRolePolicy", "iam:DeleteRolePolicy", "iam:ListRolePolicies",
+                "iam:ListAttachedRolePolicies", "iam:PassRole"],
+     "Resource": "arn:aws:iam::463870298492:role/Strategy6PaperBot*"},
+    {"Sid": "Lambda", "Effect": "Allow",
+     "Action": ["lambda:CreateFunction", "lambda:GetFunction", "lambda:GetFunctionConfiguration", "lambda:UpdateFunctionCode",
+                "lambda:UpdateFunctionConfiguration", "lambda:DeleteFunction", "lambda:PutFunctionEventInvokeConfig",
+                "lambda:PutFunctionConcurrency", "lambda:InvokeFunction", "lambda:AddPermission", "lambda:RemovePermission"],
+     "Resource": "arn:aws:lambda:ap-south-1:463870298492:function:Strategy6PaperBot"},
+    {"Sid": "Scheduler", "Effect": "Allow",
+     "Action": ["scheduler:CreateScheduleGroup", "scheduler:DeleteScheduleGroup", "scheduler:CreateSchedule",
+                "scheduler:UpdateSchedule", "scheduler:DeleteSchedule", "scheduler:GetSchedule", "scheduler:ListSchedules"],
+     "Resource": ["arn:aws:scheduler:ap-south-1:463870298492:schedule-group/strategy6",
+                  "arn:aws:scheduler:ap-south-1:463870298492:schedule/strategy6/*"]},
+    {"Sid": "Logs", "Effect": "Allow", "Action": ["logs:CreateLogGroup", "logs:PutRetentionPolicy"],
+     "Resource": "arn:aws:logs:ap-south-1:463870298492:log-group:/aws/lambda/Strategy6PaperBot*"},
+    {"Sid": "Alarms", "Effect": "Allow", "Action": ["cloudwatch:PutMetricAlarm", "cloudwatch:DeleteAlarms"],
+     "Resource": "arn:aws:cloudwatch:ap-south-1:463870298492:alarm:Strategy6PaperBot-*"},
+    {"Sid": "AlarmTopic", "Effect": "Allow", "Action": ["sns:CreateTopic", "sns:Subscribe", "sns:ListSubscriptionsByTopic"],
+     "Resource": "arn:aws:sns:ap-south-1:463870298492:strategy6-alarms"}
+  ]
+}

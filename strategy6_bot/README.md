@@ -1,0 +1,62 @@
+# strategy6_bot: Strategy 6 paper trader (₹3L)
+
+Paper-trades Strategy 6 (`../docs/STRATEGY_6_REALTRADE.md`) live on Dhan market data. **No orders are placed.**
+It runs on AWS Lambda with EventBridge Scheduler, journals everything to MongoDB (database `strategy6`) and
+posts **one Discord message per run** to `#strategy6-paper`. It is fully separate from `three_sleeve_bot/`:
+own function, schedules, alarms, database, channel and capital.
+
+## Rules (`rules.py`, parity-tested against `research_realtrade.py`)
+"VIX" is the previous session's India VIX close.
+
+| Sleeve | When | 09:30 entry | Exit | Size |
+|---|---|---|---|---|
+| S2 | VIX ≥ 15, 2 sessions before expiry | sell CE/PE at ATM ± 1.25 × ATM straddle (skip if > 450 from ATM) | CE+PE ≥ 2 × entry (stop), else 15:15 expiry day | 55% of equity as margin |
+| E0 | VIX ≥ 15, expiry day | sell CE/PE at ATM ± 0.5 × straddle | CE+PE ≥ 1.5 × entry, else 15:15 | 55% of equity as margin (11% per lot) |
+| GAP | VIX ≤ 13, 4 sessions before expiry | buy ATM CE if spot > previous close, else ATM PE | limit sell at 2 × fill, else 15:15 expiry day | 5% of equity in premium |
+
+Total margin is capped at 90% of equity. The research weights are 0.45 / 0.45 (for ₹10L). At ₹3L, 0.55 keeps one
+S2 lot tradable up to Nifty ~28,200, where 0.45 stops at ~23,077 (see `rules.py`).
+
+**What ₹3L actually trades** (Nifty ~22,400, lot 65):
+- **S2:** 1 lot (~₹1.31L margin model).
+- **E0:** 1 lot (~₹1.60L) only when no S2 is open and equity is at least ₹2.91L.
+- **GAP:** 1–2 lots.
+
+Fixed-size backtest at today's lot and margin: about 19% a year on average, ranging from 3.5% to 50% by year,
+with profit factor 1.9. Starting fresh in Jan 2026 it would be +2.8% to date. Expect a slow, uneven start.
+
+## Schedule (Asia/Kolkata, weekdays; holidays skipped in code)
+RENEW_TOKEN 06:00 + 18:00 daily · HEARTBEAT 08:45 · ENTRY_0931 09:31 · TICK every minute 09:32–15:16 · EOD 15:40.
+No retries; async retries 0; reserved concurrency 1. A TICK with nothing open reads one Mongo document and exits.
+
+## Setup and deploy
+```bash
+python strategy6_bot/setup_discord.py --test     # creates #strategy6-paper + webhook -> S6_DISCORD_WEBHOOK_URL in .env
+# .env also needs S6_CAPITAL=300000 (plus the shared DHAN_*, MONGODB_URI, ALERT_EMAIL)
+python strategy6_bot/deploy.py --test            # Lambda Strategy6PaperBot, schedules group strategy6, alarms, INIT, TEST
+```
+
+## AWS permissions
+The IAM user `dev` needs `iam_policy.json` (the old bot's permissions, scoped to `Strategy6PaperBot*` / `strategy6*`).
+Attach it as a managed policy from an admin login (console, or CLI with an admin profile):
+```bash
+aws iam create-policy --policy-name Strategy6PaperBotDeploy --policy-document file://strategy6_bot/iam_policy.json
+aws iam attach-user-policy --user-name dev --policy-arn arn:aws:iam::463870298492:policy/Strategy6PaperBotDeploy
+```
+
+## Runbook
+```bash
+python strategy6_bot/invoke.py STATUS                 # equity, open trades, token validity
+python strategy6_bot/invoke.py TEST                   # dry run of today's 09:31 decisions (records nothing)
+python strategy6_bot/invoke.py PAUSE | RESUME         # stop / allow new entries (open trades still managed)
+python strategy6_bot/invoke.py FLATTEN                # next TICK closes everything
+python strategy6_bot/invoke.py SET_TOKEN --token X    # new Dhan token if renewal failed
+python strategy6_bot/invoke.py TEST --local           # in-process against strategy6_dev
+python -m pytest strategy6_bot/tests -q               # 145 tests (parity tests need the engine cache)
+python strategy6_bot/deploy.py --remove               # delete function, schedules, alarms, roles (Mongo kept)
+```
+
+## Notes
+- **Dhan token:** this bot renews and keeps its own token in Mongo `strategy6.state`. If another bot renews the same Dhan token, one of them ends up with an invalid token, so run only one bot per Dhan account.
+- **Running costs:** ₹590/month (Dhan Data API) are charged to paper equity. Lambda, MongoDB free tier and Discord cost nothing. The research used ₹1,990 (VPS setup).
+- **Not built yet:** next-morning reconciliation against the replay (`three_sleeve_bot/reconcile.py` has the pattern) and live order placement.

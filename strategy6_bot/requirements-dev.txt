@@ -1,0 +1,4 @@
+-r requirements.txt
+boto3
+pytest
+mongomock>=4.1
