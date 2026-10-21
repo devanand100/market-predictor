@@ -4,12 +4,12 @@ Paper-trades Strategy 5 (`docs/PORTFOLIO_STRATEGY.md`) live: weekly staggered st
 + monthly straddle (VRP ≥ 2). **No orders are placed.** Runs on AWS Lambda with Dhan market data, journals
 everything to MongoDB and posts **one Discord message per run** to a single channel.
 
-## Status (2026-10-20)
-- Code complete, 145 tests passing (parity with the research code, full simulated week, write budget).
+## Status (2026-10-21)
+- Code complete, 146 tests passing (parity with the research code, full simulated week, write budget).
 - Discord channel `#three-sleeve-paper` and its webhook are created (`DISCORD_WEBHOOK_URL` in `.env`).
-- AWS: Lambda function and role created. **Deploy paused**: reserved concurrency needs the account Lambda limit
-  raised from 10 (request `6ceaaf1faab043ccbb5c05894992bbb04eHF3V11`, 1000, PENDING). After approval, run
-  `python three_sleeve_bot/deploy.py --test`. Schedules don't exist yet, so nothing runs.
+- **Deployed 2026-10-21** (account Lambda limit raised to 1000): function, reserved concurrency 1, 10 EventBridge
+  schedules (group `three-sleeve`), CloudWatch alarms -> SNS `three-sleeve-alarms`. First live run: RENEW_TOKEN
+  2026-10-22 06:00 IST, first trading run 08:15 RECONCILE. If INIT finds an old token in Mongo it keeps it; use SET_TOKEN.
 - Paper capital Rs 15L (`CAPITAL`): at Nifty ~25,000, Rs 10L can't size the L2 sleeve (needs >= 3 lots).
 
 ## Files
@@ -46,7 +46,7 @@ python three_sleeve_bot/invoke.py FLATTEN                # next TICK closes ever
 python three_sleeve_bot/invoke.py SET_TOKEN --token X    # new Dhan token if renewal failed (no redeploy)
 python three_sleeve_bot/invoke.py RECONCILE --recon-date 2026-10-19
 python three_sleeve_bot/invoke.py TEST --local           # in-process against three_sleeve_dev
-python -m pytest three_sleeve_bot/tests -q               # 145 tests (parity tests need the engine cache)
+python -m pytest three_sleeve_bot/tests -q               # 146 tests (parity tests need the engine cache)
 python three_sleeve_bot/deploy.py [--test | --remove]
 ```
 `.env` keys: `DHAN_CLIENT_ID`, `DHAN_ACCESS_TOKEN` (seed; the bot keeps the renewed token in Mongo), `MONGODB_URI`,
