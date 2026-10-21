@@ -44,6 +44,7 @@ Research and backtesting of NIFTY weekly options strategies for a retail trader,
 | `final_gap_buy.py` | Strategy 3 sized backtest from ₹3L, Monte Carlo |
 | `research_regime_switch.py`, `final_stacked_strategy.py` | VIX switch / stacking of Strategies 1 and 3; Strategy 4 final backtest |
 | `strategy6_bot/` | Strategy 6 paper bot at ₹3L, deployed 2026-10-22 (Lambda `Strategy6PaperBot`, Mongo `strategy6`, Discord `#strategy6-paper`); `rules.py` is parity-tested against `research_realtrade.py`. See its README |
+| `research_realtrade_dash_export.py`, `research_realtrade_sleeve_export.py` | Strategy 6 at ₹3L with bot settings → `data/reports/strategy6_3L_*.json` for the dashboard https://claude.ai/artifact/FH3SrDnkrnJ81ds3T1jsXR (trades, daily equity, fixed-₹3L capacity, each sleeve alone) |
 | `research_realtrade.py` | Real-market replay: account + `Weekly` structures, real prices only, lot size by date, margin cap, `replay_many()` runs many accounts in one pass |
 | `research_realtrade_grid*.py`, `research_realtrade_portfolio.py`, `research_realtrade_sensitivity.py`, `final_realtrade_strategy.py` | Strategy 6: structure grids, sizing grid, VIX-threshold sensitivity, final backtest + stress tests |
 | `three_sleeve_bot/` | Strategy 5 paper-trading bot (see its README); `rules.py` is parity-tested against the research |
