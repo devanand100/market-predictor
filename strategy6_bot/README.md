@@ -1,4 +1,4 @@
-# strategy6_bot: Strategy 6 paper trader (₹3L)
+# strategy6_bot: Strategy 6 paper trader (₹4L)
 
 Paper-trades Strategy 6 (`../docs/STRATEGY_6_REALTRADE.md`) live on Dhan market data. **No orders are placed.**
 It runs on AWS Lambda with EventBridge Scheduler, journals everything to MongoDB (database `strategy6`) and
@@ -14,7 +14,18 @@ own function, schedules, alarms, database, channel and capital.
 | E0 | VIX ≥ 15, expiry day | sell CE/PE at ATM ± 0.5 × straddle | CE+PE ≥ 1.5 × entry, else 15:15 | 55% of equity as margin (11% per lot) |
 | GAP | VIX ≤ 13, 4 sessions before expiry | buy ATM CE if spot > previous close, else ATM PE | limit sell at 2 × fill, else 15:15 expiry day | 5% of equity in premium |
 
-Total margin is capped at 90% of equity. The research weights are 0.45 / 0.45 (for ₹10L). At ₹3L, 0.55 keeps one
+Total margin is capped at 90% of equity. **Before every strangle entry the bot asks Dhan's margin calculator** for those exact
+legs and lots. If Dhan's figure is above the room left (90% of equity minus open margin), it trades fewer lots or skips, and the
+entry message shows "Margin model / Dhan" and "Margin available". Open trades then count Dhan's figure. If Dhan's calculator
+is unavailable, the bot enters on the model margin and the message says "Dhan check unavailable". On 2026-10-22 Dhan asked
+₹1.72L for one strangle lot against the model's ₹1.33L (9%), so the real check matters.
+
+**Capital: ₹4L since 2026-10-22** (`S6_CAPITAL=400000` in `.env`; it was ₹3L at the first deploy). At ₹4L one strangle lot
+(Dhan ~₹1.72L) or one expiry-day lot (~₹2.1L on expiry day) fits, never both at once. **Before every strangle entry the bot asks Dhan's margin calculator** for those exact
+legs and lots. If Dhan's figure is above the room left (90% of equity minus open margin), it trades fewer lots or skips, and the
+entry message shows "Margin model / Dhan" and "Margin available". Open trades then count Dhan's figure. If Dhan's calculator
+is unavailable, the bot enters on the model margin and the message says "Dhan check unavailable". On 2026-10-22 Dhan asked
+₹1.72L for one strangle lot against the model's ₹1.33L (9%), so the real check matters. The research weights are 0.45 / 0.45 (for ₹10L). At ₹3L, 0.55 keeps one
 S2 lot tradable up to Nifty ~28,200, where 0.45 stops at ~23,077 (see `rules.py`).
 
 **What ₹3L actually trades** (Nifty ~22,400, lot 65):
@@ -32,7 +43,7 @@ No retries; async retries 0; reserved concurrency 1. A TICK with nothing open re
 ## Setup and deploy
 ```bash
 python strategy6_bot/setup_discord.py --test     # creates #strategy6-paper + webhook -> S6_DISCORD_WEBHOOK_URL in .env
-# .env also needs S6_CAPITAL=300000 (plus the shared DHAN_*, MONGODB_URI, ALERT_EMAIL)
+# .env also needs S6_CAPITAL=400000 (plus the shared DHAN_*, MONGODB_URI, ALERT_EMAIL)
 python strategy6_bot/deploy.py --test            # Lambda Strategy6PaperBot, schedules group strategy6, alarms, INIT, TEST
 ```
 
@@ -52,7 +63,7 @@ python strategy6_bot/invoke.py PAUSE | RESUME         # stop / allow new entries
 python strategy6_bot/invoke.py FLATTEN                # next TICK closes everything
 python strategy6_bot/invoke.py SET_TOKEN --token X    # new Dhan token if renewal failed
 python strategy6_bot/invoke.py TEST --local           # in-process against strategy6_dev
-python -m pytest strategy6_bot/tests -q               # 145 tests (parity tests need the engine cache)
+python -m pytest strategy6_bot/tests -q               # 150 tests (parity tests need the engine cache)
 python strategy6_bot/deploy.py --remove               # delete function, schedules, alarms, roles (Mongo kept)
 ```
 

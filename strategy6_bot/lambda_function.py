@@ -81,6 +81,18 @@ def prev_vix_close(dh, today):
     return c[-1][1] if c else None
 
 
+def dhan_margin(dh, ce, pe, lots):
+    """Dhan's margin calculator for selling `lots` of the CE/PE pair at their LTPs -> total Rs, or None if unavailable."""
+    m = dh.margin([{"sid": ce["sid"], "side": -1, "qty": lots * costs.LOT, "px": ce["ltp"]},
+                   {"sid": pe["sid"], "side": -1, "qty": lots * costs.LOT, "px": pe["ltp"]}])
+    return round(m["total"]) if m and m.get("total") else None
+
+
+def booked_margin(item):
+    """Margin an open item ties up: Dhan's figure from entry when it was available, else the model's."""
+    return item.get("mgd") or item.get("mg") or 0
+
+
 def chain_leg(chain, K, typ):
     return (chain.get(int(K)) or {}).get(typ.lower()) or {}
 
@@ -237,7 +249,7 @@ def a_entry(ctx, event, dry=False):
         eq = equity(st) + unrealised(opened, q)            # research sizes on cash + open MTM
     else:
         eq = equity(st)
-    used = sum(x.get("mg") or 0 for x in opened)
+    used = sum(booked_margin(x) for x in opened)
     paused = bool(st.get("paused"))
     out.update(spot=spot, equity=round(eq), margin_used=round(used))
     new_open, lines = [], []
@@ -290,24 +302,41 @@ def a_entry(ctx, event, dry=False):
                     ok, why = False, f"strikes {s['ce']} CE / {s['pe']} PE have no price"
                 elif lots < 1:
                     ok, why = False, f"equity too small: one lot needs {cap:,.0f} margin"
-                else:
+                if ok and lots >= 1:
+                    # real margin check before the (paper) order: Dhan's calculator for exactly these legs
+                    avail = R.MAX_UTIL * eq - used
+                    mdhan = dhan_margin(dh, ce, pe, lots)
+                    if mdhan and mdhan > avail:
+                        fit = int(avail // (mdhan / lots))
+                        mdhan = dhan_margin(dh, ce, pe, fit) if fit >= 1 else mdhan
+                        if fit < 1 or (mdhan and mdhan > avail):
+                            ok, why = False, (f"Dhan margin ₹{mdhan:,.0f} for {lots} lot(s) > available ₹{avail:,.0f} "
+                                              f"({R.MAX_UTIL:.0%} of equity minus open margin)")
+                        else:
+                            why = f"Dhan margin cut {lots} → {fit} lot(s); {why}"
+                            lots = fit
+                    inputs.update(margin_dhan=mdhan, margin_available=round(avail), lots=lots,
+                                  margin_check="dhan" if mdhan else "unavailable (model used)")
+                if ok and lots >= 1:
                     qty = lots * costs.LOT
                     legs = [leg_doc("CE", s["ce"], ce, -1, qty, R.sell_fill(ce["ltp"]), expiry),
                             leg_doc("PE", s["pe"], pe, -1, qty, R.sell_fill(pe["ltp"]), expiry)]
                     px_in = legs[0]["fill"] + legs[1]["fill"]
                     stop = round(R.stop_level(px_in, STOP_MULT[sl]), 2)
                     doc = {"sleeve": sl, "legs": legs, "lots": lots, "qty": qty, "credit": round(px_in * qty, 2),
-                           "px_in": round(px_in, 2), "stop_sum": stop, "margin_model": round(cap * lots)}
-                    item_extra = {"stop": stop}
+                           "px_in": round(px_in, 2), "stop_sum": stop, "margin_model": round(cap * lots),
+                           "margin_dhan": mdhan, "margin_available": round(avail)}
+                    item_extra = {"stop": stop, "mgd": mdhan}
                     why = (f"sell {lots} × {s['ce']} CE / {s['pe']} PE (S {s['S']:.1f}, w {s['w']}), "
-                           f"stop CE+PE ≥ {stop:.2f}; {why}")
+                           f"stop CE+PE ≥ {stop:.2f}, margin Dhan "
+                           f"{'₹' + format(mdhan, ',') if mdhan else 'unavailable'} of ₹{avail:,.0f} available; {why}")
         if doc:
             tid = f"P-{sl}-{today}"
             doc.update({"_id": tid, "src": "paper", "status": "open", "key": f"{sl}|{today}", "ckey": f"{sl}|{expiry}",
                         "expiry": expiry, "entry_d": today, "entry_ts": dt.datetime.now(dt.timezone.utc),
                         "exit_plan": expiry, "ch_in": entry_charges(doc["legs"], today), "eq_before": round(eq),
                         "in": inputs})
-            used += doc["margin_model"]
+            used += doc.get("margin_dhan") or doc["margin_model"]
             new_open.append((doc, compact(tid, sl, doc["legs"], {"exp": expiry, "xd": expiry,
                                                                   "mg": doc["margin_model"], **item_extra})))
         outcome = "enter" if doc else "skip"
@@ -335,7 +364,10 @@ def a_entry(ctx, event, dry=False):
             {"name": "Target" if doc["sleeve"] == "GAP" else "Stop",
              "value": f"≥ {doc['target']:.2f}" if doc["sleeve"] == "GAP" else f"CE+PE ≥ {doc['stop_sum']:.2f}"},
             {"name": "Entry charges", "value": N.fmt_rs(sum(doc["ch_in"].values()))},
-            {"name": "Margin (model)", "value": N.fmt_rs(doc["margin_model"])},
+            {"name": "Margin model / Dhan", "value": f"{N.fmt_rs(doc['margin_model'])} / "
+             + (N.fmt_rs(doc["margin_dhan"]) if doc.get("margin_dhan") else
+                ("premium" if doc["sleeve"] == "GAP" else "⚠️ Dhan check unavailable"))},
+            *([{"name": "Margin available", "value": N.fmt_rs(doc["margin_available"])}] if doc.get("margin_available") else []),
             {"name": "Trade", "value": doc["_id"], "inline": False}])
     return out
 

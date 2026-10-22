@@ -257,3 +257,61 @@ def test_write_budget_one_day_with_minute_ticks(bot):
         importlib.reload(mongomock.collection)
     assert len(ticks) == 345
     assert counts["n"] < 40, counts
+
+
+# ---------------------------------------------------------------- Dhan margin check before entry
+def _margin_per_lot(rs):
+    """Fake Dhan margin: rs per lot of the strangle (both legs), None = API unavailable."""
+    def m(self, legs):
+        if rs is None:
+            return None
+        lots = max(l["qty"] for l in legs) / 65
+        return {"total": rs * lots, "span": 0.0, "exposure": 0.0, "hedge_benefit": 0.0}
+    return m
+
+
+def test_dhan_margin_recorded_and_shown(bot, monkeypatch):
+    monkeypatch.setattr(FakeDhan, "margin", _margin_per_lot(171_605.0))
+    out = run("ENTRY_0931", WEEK[2])
+    d = next(x for x in out["decisions"] if x["sleeve"] == "S2")
+    assert d["outcome"] == "enter" and d["in"]["margin_dhan"] == 171_605 and d["in"]["margin_check"] == "dhan"
+    t = bot.trades.find_one({"sleeve": "S2"})
+    assert t["margin_dhan"] == 171_605 and t["margin_available"] == 270_000
+    assert J.get_state()["open"][0]["mgd"] == 171_605                  # later entries count the real margin
+    embeds = N.sent[-1]["embeds"]
+    entry = next(e for e in embeds if e["title"].endswith("Entry S2"))
+    assert any(f["name"] == "Margin model / Dhan" and "171,605" in f["value"] for f in entry["fields"])
+
+
+def test_dhan_margin_too_high_skips(bot, monkeypatch):
+    monkeypatch.setattr(FakeDhan, "margin", _margin_per_lot(280_000.0))        # > 90% of Rs 3L
+    out = run("ENTRY_0931", WEEK[2])
+    d = next(x for x in out["decisions"] if x["sleeve"] == "S2")
+    assert d["outcome"] == "skip" and "Dhan margin" in d["why"] and bot.trades.count_documents({}) == 0
+
+
+def test_dhan_margin_cuts_lots(bot, monkeypatch):
+    monkeypatch.setattr(L, "CAPITAL", 1_000_000.0)
+    monkeypatch.setattr(FakeDhan, "margin", _margin_per_lot(250_000.0))
+    out = run("ENTRY_0931", WEEK[2])
+    d = next(x for x in out["decisions"] if x["sleeve"] == "S2")
+    model_lots = R.short_lots(1_000_000, 22400, R.W_S2, False, 0)[0]
+    assert model_lots == 4 and d["outcome"] == "enter" and d["in"]["lots"] == 3          # 4 x 250k > 900k -> 3
+    assert "cut 4 → 3" in d["why"] and bot.trades.find_one({"sleeve": "S2"})["margin_dhan"] == 750_000
+
+
+def test_dhan_margin_unavailable_enters_on_model_and_says_so(bot, monkeypatch):
+    monkeypatch.setattr(FakeDhan, "margin", _margin_per_lot(None))
+    out = run("ENTRY_0931", WEEK[2])
+    d = next(x for x in out["decisions"] if x["sleeve"] == "S2")
+    assert d["outcome"] == "enter" and d["in"]["margin_check"].startswith("unavailable")
+    entry = next(e for e in N.sent[-1]["embeds"] if e["title"].endswith("Entry S2"))
+    assert any("Dhan check unavailable" in f["value"] for f in entry["fields"])
+
+
+def test_open_dhan_margin_blocks_expiry_day_lot(bot, monkeypatch):
+    monkeypatch.setattr(FakeDhan, "margin", _margin_per_lot(171_605.0))
+    run("ENTRY_0931", WEEK[2])                                  # S2 open with Rs 1.72L real margin
+    out = run("ENTRY_0931", WEEK[4])
+    e0 = next(d for d in out["decisions"] if d["sleeve"] == "E0")
+    assert e0["outcome"] == "skip"
