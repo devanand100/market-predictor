@@ -111,3 +111,9 @@ def test_kill_switch_rule():
     assert R.kill_switch(True, -0.18, [-100] * 20)[:2] == (True, None)           # PF 0 -> stays paused
     assert R.kill_switch(True, -0.18, [100] * 10)[:2] == (True, None)            # < 20 trades -> stays paused
     assert R.kill_switch(True, -0.18, [200, -100] * 10)[:2] == (False, "resume")  # PF 2.0 over 20 trades
+
+
+def test_kill_switch_book_threshold():
+    assert R.KILL_DD_S7 == -0.16
+    assert R.kill_switch(False, -0.155, [], R.KILL_DD_S7)[:2] == (False, None)
+    assert R.kill_switch(False, -0.16, [], R.KILL_DD_S7)[:2] == (True, "fire")

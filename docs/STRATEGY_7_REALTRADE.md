@@ -50,6 +50,13 @@ MON 2.24.
 - **Minimum capital is about ₹10L.** One MON lot needs about ₹1.72L margin, which is 20% of about ₹8.6L.
 - **Expect less live.** As with Strategy 6, expect live results below the headline: the rules were chosen on 2021–23, and execution will be worse than modelled.
 
+## Kill switch (2026-10-23)
+The bot's notify-only kill switch fires at **−16%** for this book, against −15% for Strategy 6. Strategy 7's real
+2021–26 daily mark-to-market worst is −14.97% (29 Sep 2026), so −15% has no headroom. On the COVID synthetic tests of
+its weekly sleeves (the same as Strategy 6 at 0.45 / 0.45 / 0.05), −16% keeps the drawdown at −19% (base 36.8% CAGR,
+harsh 33.5%). −17% and −18% let the base case reach −21.7%, and −20% reaches −24.7%. Restart is unchanged: last
+20 trades PF ≥ 1.3.
+
 ## To deploy later
 Add a MON sleeve to `strategy6_bot`. `three_sleeve_bot/lambda_function.py` already has `MONTHLY_1015` (VRP from
 Dhan daily closes, monthly expiry chain, strike nearest the forward) and the rules in `three_sleeve_bot/rules.py`

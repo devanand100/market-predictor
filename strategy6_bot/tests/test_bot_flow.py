@@ -520,3 +520,18 @@ def test_kill_switch_resumes_after_good_trades(bot):
     assert out["kill_switch"] == {"active": False, "event": "resume"}
     assert any("kill switch would RESUME" in t for t in _titles())
     assert bot.days.find_one({"d": WEEK[1]})["kill_switch"]["event"] == "resume"
+
+
+def test_kill_switch_threshold_per_book(two_books):
+    s6db, s7db, _ = two_books
+    J.update_state(set_={"peak": 300_000 / 0.845})                           # Strategy 6: -15.5% -> fires (-15%)
+    J.use(s7db.name)
+    J.update_state(set_={"peak": 1_500_000 / 0.845})                         # Strategy 7: -15.5% -> quiet (-16%)
+    J.use(None)
+    out = run_books("EOD", WEEK[2])
+    assert out["s6"]["kill_switch"]["event"] == "fire" and out["s7"]["kill_switch"]["event"] is None
+    J.use(s7db.name)
+    J.update_state(set_={"peak": 1_500_000 / 0.835})                         # Strategy 7: -16.5% -> fires
+    J.use(None)
+    out = run_books("EOD", WEEK[3])
+    assert out["s7"]["kill_switch"]["event"] == "fire"

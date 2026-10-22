@@ -46,7 +46,10 @@ ALERT_SPREAD_X, ALERT_SPREAD_TRADES = 2.0, 20                     # median sprea
 # kill switch, NOTIFY ONLY in paper (research_killswitch.py: best of 8 rules; never fires on real 2021-26, caps the
 # 2020 COVID drawdown near -19% on synthetic prices): would pause new entries when drawdown <= -15%, would resume
 # when the last 20 closed trades have PF >= 1.3
-KILL_DD, KILL_RESUME_PF, KILL_RESUME_TRADES = -0.15, 1.3, 20           # first 1-minute tick after the 15:15 bar
+KILL_DD, KILL_RESUME_PF, KILL_RESUME_TRADES = -0.15, 1.3, 20
+# Strategy 7 book: -16%. Its real 2021-26 daily MTM worst is -14.97%, so -15% has no headroom; -16% still caps both
+# synthetic COVID drawdowns at -19% (-17%/-18% let the base case reach -21.7%). Chosen 2026-10-23.
+KILL_DD_S7 = -0.16           # first 1-minute tick after the 15:15 bar
 MONTHLY_RUNNING_COSTS = 590.0  # Rs/month: Dhan Data API incl. GST. Lambda, MongoDB free tier and Discord cost nothing.
 
 
@@ -235,14 +238,14 @@ def spread_ratio(leg):
     return max(cost, 0.0) / slip(ltp)
 
 
-def kill_switch(active, dd, last_nets):
+def kill_switch(active, dd, last_nets, kill_dd=KILL_DD):
     """-> (active_now, event, reason). event in None / 'fire' / 'resume'. NOTIFY ONLY: the bot keeps trading."""
     pf = profit_factor(last_nets[-KILL_RESUME_TRADES:]) if len(last_nets) >= KILL_RESUME_TRADES else None
     pf_txt = f"{pf:.2f}" if pf is not None else f"n/a ({len(last_nets)} trades)"
     if not active:
-        if dd <= KILL_DD:
-            return True, "fire", f"drawdown {dd:.1%} ≤ {KILL_DD:.0%}"
-        return False, None, f"inactive (drawdown {dd:.1%}, fires at {KILL_DD:.0%})"
+        if dd <= kill_dd:
+            return True, "fire", f"drawdown {dd:.1%} ≤ {kill_dd:.0%}"
+        return False, None, f"inactive (drawdown {dd:.1%}, fires at {kill_dd:.0%})"
     if pf is not None and pf >= KILL_RESUME_PF:
         return False, "resume", f"last {KILL_RESUME_TRADES} trades PF {pf_txt} ≥ {KILL_RESUME_PF:g}"
     return True, None, f"would stay paused: last {KILL_RESUME_TRADES} trades PF {pf_txt} < {KILL_RESUME_PF:g} (drawdown {dd:.1%})"

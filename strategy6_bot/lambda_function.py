@@ -71,6 +71,7 @@ class Book:
     margin_base: float
     monthly: bool = False
     w_mon: float = 0.0
+    kill_dd: float = R.KILL_DD
 
 
 def books():
@@ -79,7 +80,7 @@ def books():
     if CAPITAL_S7 > 0:
         out.append(Book("s7", "Strategy 7", env("MONGO_DB_S7") or J.default_name() + "_s7", CAPITAL_S7,
                         env("DISCORD_WEBHOOK_URL_S7", ""), R.S7_W_S2, R.S7_W_E0, R.S7_F_GAP, R.S7_MARGIN_PCT,
-                        monthly=True, w_mon=R.S7_W_MON))
+                        monthly=True, w_mon=R.S7_W_MON, kill_dd=R.KILL_DD_S7))
     return out
 
 
@@ -662,7 +663,7 @@ def a_eod(ctx, event):
     nets = [t.get("net") or 0 for t in J.db().trades.find({"src": "paper", "status": "closed"}, {"net": 1, "exit_ts": 1})
             .sort("exit_ts", -1).limit(R.KILL_RESUME_TRADES)][::-1]
     ks = st.get("ks") or {}
-    ks_on, ks_event, ks_why = R.kill_switch(bool(ks.get("active")), dd, nets)
+    ks_on, ks_event, ks_why = R.kill_switch(bool(ks.get("active")), dd, nets, B.kill_dd)
     if ks_event:
         ks = {"active": ks_on, "since": today if ks_on else None, "last_event": ks_event, "last_d": today, "why": ks_why}
         J.update_state(set_={"ks": ks})
