@@ -435,3 +435,55 @@ def test_book_filter_and_primary_only_actions(two_books):
     assert {d["outcome"] for d in out["s7"]["decisions"]} == {"skip"} and s6db.trades.count_documents({}) == 1
     out = run_books("RENEW_TOKEN", WEEK[2])
     assert out["renewed"] and s6db.state.find_one({"_id": J.STATE_ID})["dhan_token"].startswith("x")
+
+
+# ---------------------------------------------------------------- daily-report health alerts
+def _eod(date=WEEK[2]):
+    out = run("EOD", date)
+    msg = N.sent[-1]
+    rep = next(e for e in msg["embeds"] if "daily report" in e["title"])
+    hf = next(f for f in rep["fields"] if f["name"] == "Health")
+    alert = next((e for e in msg["embeds"] if "health alert" in e["title"]), None)
+    return out, hf["value"], alert
+
+
+def test_health_quiet_when_nothing_is_wrong(bot):
+    out, health, alert = _eod()
+    assert all(out["health"].values()) and alert is None
+    assert "Rolling PF: n/a" in health and "Drawdown" in health and "VRP" in health and "Spread" in health
+    assert bot.days.find_one({"d": WEEK[2]})["health"][0]["name"] == "Rolling PF"
+
+
+def test_drawdown_alert(bot):
+    J.update_state(set_={"peak": 400_000.0})                     # equity 3L vs peak 4L = -25%
+    out, health, alert = _eod()
+    assert out["health"]["Drawdown"] is False and alert and "Drawdown" in alert["description"]
+
+
+def test_rolling_pf_alert(bot):
+    import datetime as _dt
+    for i in range(12):
+        bot.trades.insert_one({"_id": f"T{i}", "key": f"T{i}", "src": "paper", "status": "closed", "net": 1000 if i % 4 == 0 else -1500,
+                               "exit_ts": _dt.datetime(2026, 11, 1 + i), "legs": []})
+    out, health, alert = _eod()
+    assert out["health"]["Rolling PF"] is False and "Rolling PF" in alert["description"]
+
+
+def test_vrp_alert(bot, monkeypatch):
+    def closes(self, security_id, before, days=45):
+        dates = [f"2026-10-{d:02d}" for d in range(1, 31)] + [f"2026-11-{d:02d}" for d in range(1, 31)]
+        if security_id == L.VIX_ID:
+            return [(d, 8.0) for d in dates]                               # VIX far below realised volatility
+        return [(d, 22000 * (1 + 0.02 * math.sin(i))) for i, d in enumerate(dates)]
+    monkeypatch.setattr(FakeDhan, "daily_closes", closes)
+    out, health, alert = _eod()
+    assert out["health"]["VRP 20-day avg"] is False and "VRP" in alert["description"]
+
+
+def test_spread_alert(bot):
+    run("ENTRY_0931", WEEK[2])
+    t = bot.trades.find_one({"sleeve": "S2"})
+    legs = [dict(l, bid=l["ltp"] - 5.0) for l in t["legs"]]                # 5 pts below LTP vs ~0.45 modelled slip
+    bot.trades.update_one({"_id": t["_id"]}, {"$set": {"legs": legs}})
+    out, health, alert = _eod()
+    assert out["health"]["Spread vs model"] is False and "Spread" in alert["description"]

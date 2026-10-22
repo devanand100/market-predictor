@@ -93,3 +93,13 @@ def test_mon_lots_match_research_sizing():
     lots, cap = R.mon_lots(1_500_000, 22800, 0)
     assert cap == pytest.approx(0.116 * 22800 * 65) and lots == int(0.20 * 1_500_000 // cap) == 1
     assert R.mon_lots(1_500_000, 22800, 1_300_000)[0] == 0            # 90% cap
+
+
+def test_health_helpers():
+    assert R.profit_factor([100, -50]) == 2.0 and R.profit_factor([100]) == float("inf") and R.profit_factor([]) is None
+    leg = {"side": -1, "ltp": 100.0, "bid": 99.0, "ask": 101.0}
+    assert R.spread_ratio(leg) == pytest.approx(1.0 / R.slip(100.0))
+    assert R.spread_ratio({"side": 1, "ltp": 100.0, "bid": 0, "ask": 101.0}) is None
+    closes = [(f"d{i}", 100.0 * (1.01 if i % 2 else 0.99)) for i in range(25)]
+    vs = R.vrp_series([(d, 20.0) for d, _ in closes], closes)
+    assert len(vs) == 5 and vs[-1][1] == pytest.approx(20.0 - R.rv20([c for _, c in closes]))

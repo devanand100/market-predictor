@@ -50,6 +50,18 @@ S2 lot tradable up to Nifty ~28,200, where 0.45 stops at ~23,077 (see `rules.py`
 Fixed-size backtest at today's lot and margin: about 19% a year on average, ranging from 3.5% to 50% by year,
 with profit factor 1.9. Starting fresh in Jan 2026 it would be +2.8% to date. Expect a slow, uneven start.
 
+## Daily-report health alerts (each book, at EOD)
+Every daily report has a **Health** field. An extra **⚠️ health alert** message is added when a check trips:
+
+| Check | Alert when |
+|---|---|
+| Rolling PF | profit factor of the last 20 closed trades < 1.0 (from 10 trades on) |
+| Drawdown | mark-to-market drawdown beyond −15% (backtest worst about −13%) |
+| VRP 20-day avg | VIX close − RV20, averaged over 20 sessions, below 0 (options no longer overpriced) |
+| Spread vs model | median spread cost at entry (bid/ask vs LTP) > 2× the modelled slippage, last 20 trades |
+
+The checks are stored in `days.health`. Thresholds are in `rules.py` (`ALERT_*`). Background: `docs/STRATEGY_6_REALTRADE.md` §7.
+
 ## Schedule (Asia/Kolkata, weekdays; holidays skipped in code)
 RENEW_TOKEN 06:00 + 18:00 daily · HEARTBEAT 08:45 · ENTRY_0931 09:31 · TICK every minute 09:32–15:16 · EOD 15:40.
 No retries; async retries 0; reserved concurrency 1. A TICK with nothing open reads one Mongo document and exits.
@@ -77,7 +89,7 @@ python strategy6_bot/invoke.py PAUSE | RESUME         # stop / allow new entries
 python strategy6_bot/invoke.py FLATTEN                # next TICK closes everything
 python strategy6_bot/invoke.py SET_TOKEN --token X    # new Dhan token if renewal failed
 python strategy6_bot/invoke.py TEST --local           # in-process against the *_dev databases; no Discord posts (add --discord to post)
-python -m pytest strategy6_bot/tests -q               # 160 tests (parity tests need the engine cache)
+python -m pytest strategy6_bot/tests -q               # 166 tests (parity tests need the engine cache)
 python strategy6_bot/deploy.py --remove               # delete function, schedules, alarms, roles (Mongo kept)
 ```
 

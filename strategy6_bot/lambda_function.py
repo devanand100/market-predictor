@@ -659,10 +659,52 @@ def a_eod(ctx, event):
     errs = sum(day_doc["errors"].values())
     if errs:
         fields.append({"name": "Errors today", "value": str(errs)})
+    checks = health(dh, today, dd)
+    bad = [c for c in checks if not c[1]]
+    fields.append({"name": "Health", "value": "\n".join(f"{'✅' if ok else '⚠️'} {n}: {t}" for n, ok, t in checks),
+                   "inline": False})
+    J.upsert_day(ctx, today, {"health": [{"name": n, "ok": ok, "text": t} for n, ok, t in checks]})
     N.send("daily_report", f"📊 {B.label} daily report {today}", "", N.GREEN if day_doc["realised_today"] >= 0 else N.RED, fields)
+    if bad:
+        N.send("errors", f"⚠️ {B.label}: {len(bad)} health alert(s)",
+               "\n".join(f"**{n}**: {t}" for n, _, t in bad)
+               + "\nThe edge may be fading. Review before adding capital or going live (docs/STRATEGY_6_REALTRADE.md §7).",
+               N.ORANGE)
     if cal.next_trading_day(today).isocalendar()[1] != cal.d(today).isocalendar()[1]:
         weekly_summary(today)
-    return {"equity": eq, "mark": mark, "dd": dd}
+    return {"equity": eq, "mark": mark, "dd": dd, "health": {n: ok for n, ok, _ in checks}}
+
+
+def health(dh, today, dd):
+    """Early-warning checks for the daily report. -> (rows [(name, ok, text)], details for alerts)"""
+    rows = []
+    closed = list(J.db().trades.find({"src": "paper", "status": "closed"}, {"net": 1, "exit_ts": 1, "legs": 1})
+                  .sort("exit_ts", -1).limit(R.ALERT_PF_TRADES))
+    nets = [t.get("net") or 0 for t in closed]
+    pf = R.profit_factor(nets)
+    if len(nets) < R.ALERT_PF_MIN_TRADES:
+        rows.append(("Rolling PF", True, f"n/a ({len(nets)} closed trades, needs {R.ALERT_PF_MIN_TRADES})"))
+    else:
+        rows.append(("Rolling PF", pf is None or pf >= R.ALERT_PF_MIN,
+                     f"{pf:.2f} over the last {len(nets)} trades (alert < {R.ALERT_PF_MIN:g})" if pf is not None else "no losses"))
+    rows.append(("Drawdown", dd > R.ALERT_DD, f"{dd:.1%} (alert beyond {R.ALERT_DD:.0%})"))
+    nxt = cal.d(today) + dt.timedelta(days=1)                     # include today's close when Dhan has it
+    vs = R.vrp_series(dh.daily_closes(VIX_ID, nxt, days=60), dh.daily_closes(NIFTY_ID, nxt, days=90))[-R.ALERT_VRP_DAYS:]
+    if len(vs) < R.ALERT_VRP_DAYS // 2:
+        rows.append(("VRP 20-day avg", True, "n/a (daily history missing)"))
+    else:
+        avg = sum(v for _, v in vs) / len(vs)
+        rows.append(("VRP 20-day avg", avg >= 0, f"{avg:+.2f} vol pts over {len(vs)} sessions (alert < 0)"))
+    recent = list(J.db().trades.find({"src": "paper"}, {"legs": 1, "entry_ts": 1}).sort("entry_ts", -1)
+                  .limit(R.ALERT_SPREAD_TRADES))
+    ratios = sorted(r for t in recent for l in t.get("legs") or [] if (r := R.spread_ratio(l)) is not None)
+    if not ratios:
+        rows.append(("Spread vs model", True, "n/a (no entries with quotes yet)"))
+    else:
+        med = ratios[len(ratios) // 2]
+        rows.append(("Spread vs model", med <= R.ALERT_SPREAD_X,
+                     f"median {med:.1f}× modelled slippage over {len(ratios)} legs (alert > {R.ALERT_SPREAD_X:g}×)"))
+    return rows
 
 
 def weekly_summary(today):

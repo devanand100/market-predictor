@@ -37,7 +37,12 @@ S7_MARGIN_PCT = 0.116
 S7_W_S2, S7_W_E0, S7_F_GAP, S7_W_MON = 0.45, 0.45, 0.05, 0.20
 VRP_MIN = 2.0
 MON_ENTRY_DTE, MON_ENTRY_MIN_DTE, MON_EXIT_DTE = 45, 41, 21
-EXIT_HHMM = "15:16"           # first 1-minute tick after the 15:15 bar
+EXIT_HHMM = "15:16"
+# daily-report health alerts (docs/STRATEGY_6_REALTRADE.md section 7)
+ALERT_PF_TRADES, ALERT_PF_MIN_TRADES, ALERT_PF_MIN = 20, 10, 1.0   # rolling PF of the last 20 closed trades < 1.0
+ALERT_DD = -0.15                                                   # mark-to-market drawdown beyond -15%
+ALERT_VRP_DAYS = 20                                                # 20-session average VIX - RV20 below 0
+ALERT_SPREAD_X, ALERT_SPREAD_TRADES = 2.0, 20                     # median spread cost > 2x modelled slippage           # first 1-minute tick after the 15:15 bar
 MONTHLY_RUNNING_COSTS = 590.0  # Rs/month: Dhan Data API incl. GST. Lambda, MongoDB free tier and Discord cost nothing.
 
 
@@ -195,3 +200,32 @@ def mon_lots(equity, spot, used, base=S7_MARGIN_PCT, weight=S7_W_MON):
     """research_realtrade_s7.MonthlyReal: weight x equity of margin, never above MAX_UTIL x equity in total."""
     cap = base * spot * LOT
     return max(0, min(int(weight * equity // cap), int((MAX_UTIL * equity - used) // cap))), cap
+
+
+# ---------------------------------------------------------------- health alerts
+def profit_factor(nets):
+    w = sum(x for x in nets if x > 0)
+    l = -sum(x for x in nets if x < 0)
+    return w / l if l > 0 else (float("inf") if w > 0 else None)
+
+
+def vrp_series(vix_closes, nifty_closes):
+    """[(date, VIX close - RV20 at that date)] for dates present in both lists (oldest first)."""
+    nd = [d for d, _ in nifty_closes]
+    nc = [c for _, c in nifty_closes]
+    vix = dict(vix_closes)
+    out = []
+    for i, d in enumerate(nd):
+        rv = rv20(nc[:i + 1])
+        if rv is not None and d in vix:
+            out.append((d, vix[d] - rv))
+    return out
+
+
+def spread_ratio(leg):
+    """Cost of crossing the spread at entry / modelled slippage for one leg (None without a usable quote)."""
+    ltp, bid, ask = leg.get("ltp") or 0, leg.get("bid") or 0, leg.get("ask") or 0
+    if ltp <= 0 or bid <= 0 or ask <= 0:
+        return None
+    cost = (ltp - bid) if leg["side"] < 0 else (ask - ltp)
+    return max(cost, 0.0) / slip(ltp)
