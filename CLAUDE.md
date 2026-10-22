@@ -50,6 +50,7 @@ Research and backtesting of NIFTY weekly options strategies for a retail trader,
 | `research_realtrade_s7.py`, `final_realtrade_s7.py` | Strategy 7: gated-L2 grid and portfolio comparison at ₹15L/₹25L; final backtest + stress tests |
 | `research_realtrade.py` | Real-market replay: account + `Weekly` structures, real prices only, lot size by date, margin cap, `replay_many()` runs many accounts in one pass |
 | `research_realtrade_grid*.py`, `research_realtrade_portfolio.py`, `research_realtrade_sensitivity.py`, `final_realtrade_strategy.py` | Strategy 6: structure grids, sizing grid, VIX-threshold sensitivity, final backtest + stress tests |
+| `research_realtrade_crowding.py`, `research_killswitch.py` | Crowded-seller filters (only E0 + premium richness survives) and kill-switch rules on the shadow record (drawdown −15% wins; bot reports it notify-only) |
 | `research_synthetic_options.py` | Calibrated synthetic option prices (BS + IV/VIX surface from real 2021–23 data) as `engine.Day`-compatible days for 2019-11..2020-12; validation vs real prices; Strategy 6 COVID stress test |
 | `three_sleeve_bot/` | Strategy 5 paper-trading bot (see its README); `rules.py` is parity-tested against the research |
 | `research_portfolio_sleeves.py`, `final_portfolio_strategy.py` | Multi-sleeve weight search (S1/L2/D2-pessimistic/gap/monthly/bear calls); Strategy 5 event-driven lot-exact backtest |

@@ -109,3 +109,21 @@ last 8 weeks); today's premium richness (ATM straddle / 0.8·spot·VIX·√T); c
   - Open interest build-up.
   - VRP and recent underpayment for S2: they help in 2021–23 and fail in 2024+.
 - **Caveat:** 14 tests and 1 survivor, with buckets of 15–30 trades. Treat it as a quality filter to watch, not proven.
+
+## 8. Kill switch (2026-10-23, `research_killswitch.py`)
+Eight rules were tested on the shadow record (the full strategy always trades; a rule decides from closed trades,
+live equity or VRP before each entry). Shadows used: real 2021–26, synthetic COVID 2019-11..2020-12 chained to real,
+and the harsh synthetic case with IV ×0.85 above VIX 21.
+
+| Rule | Real 2021–26 | COVID base | COVID harsh |
+|---|---|---|---|
+| none | 38.8% / −11.6% | 39.8% / −22.0% | 31.9% / −32.5% |
+| **drawdown −15%, resume at 20-trade PF ≥ 1.3** | never fires | 36.5% / −19.2% | 31.4% / −19.0% |
+| drawdown −20% | never fires | 35.1% / −24.7% | 33.4% / −21.1% |
+| 20-trade PF < 0.8 | 37.6% / −12.9% | 36.8% / −25.8% | 32.0% / −23.8% |
+| 40-trade PF < 0.9 / sleeve 15-trade PF < 0.5 | never fire | never fire | worse |
+| VRP 20-day < 0 (strangles) | 31.0% / −17.6% | 31.4% / −25.4% | 26.1% / −30.9% |
+
+Each cell is CAGR / max drawdown on the trade-close curve. The drawdown −15% rule is the only one that never fires on
+real data and caps both COVID drawdowns near −19%, at a cost of 0.5–3.3 CAGR points in those years. Profit-factor rules
+trigger on normal bad patches or not at all. The bot reports it **notify only**: paper keeps trading.
