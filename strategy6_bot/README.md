@@ -76,7 +76,7 @@ python strategy6_bot/invoke.py TEST                   # dry run of today's 09:31
 python strategy6_bot/invoke.py PAUSE | RESUME         # stop / allow new entries (open trades still managed)
 python strategy6_bot/invoke.py FLATTEN                # next TICK closes everything
 python strategy6_bot/invoke.py SET_TOKEN --token X    # new Dhan token if renewal failed
-python strategy6_bot/invoke.py TEST --local           # in-process against strategy6_dev
+python strategy6_bot/invoke.py TEST --local           # in-process against the *_dev databases; no Discord posts (add --discord to post)
 python -m pytest strategy6_bot/tests -q               # 160 tests (parity tests need the engine cache)
 python strategy6_bot/deploy.py --remove               # delete function, schedules, alarms, roles (Mongo kept)
 ```

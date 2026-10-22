@@ -6,7 +6,7 @@ Run a bot action, on AWS (default) or locally.
   python strategy6_bot/invoke.py PAUSE | RESUME | FLATTEN
   python strategy6_bot/invoke.py SET_TOKEN --token <new Dhan token>
   python strategy6_bot/invoke.py CLEAR_TRADE --tid P-S2-2026-10-27
-  python strategy6_bot/invoke.py TEST --local              # run in-process against the dev database
+  python strategy6_bot/invoke.py TEST --local              # run in-process against the dev database (no Discord posts)
   python strategy6_bot/invoke.py ENTRY_0931 --local --prod # in-process against the live database (careful)
 Options: --date YYYY-MM-DD and --time HH:MM override "now" (replays / tests).
 """
@@ -33,6 +33,8 @@ def main():
     ap.add_argument("--book", choices=["s6", "s7"], help="run one book only (default: all books)")
     ap.add_argument("--local", action="store_true", help="run in-process (uses the repo .env)")
     ap.add_argument("--prod", action="store_true", help="with --local: use the live database instead of *_dev")
+    ap.add_argument("--discord", action="store_true",
+                    help="with --local: post to the real Discord channels (default: only with --prod)")
     a = ap.parse_args()
     event = {"action": a.action.upper(), "by": "invoke.py"}
     for k in ("date", "time", "token", "tid", "book"):
@@ -46,9 +48,12 @@ def main():
             os.environ.setdefault(k, vals[k])
     if a.local:
         os.environ["CAPITAL"] = vals["S6_CAPITAL"]
-        os.environ["DISCORD_WEBHOOK_URL"] = vals.get("S6_DISCORD_WEBHOOK_URL", "")
+        post = a.prod or a.discord        # dev runs never post to the real channels unless asked
+        os.environ["DISCORD_WEBHOOK_URL"] = vals.get("S6_DISCORD_WEBHOOK_URL", "") if post else ""
         os.environ["CAPITAL_S7"] = vals.get("S7_CAPITAL", "0")
-        os.environ["DISCORD_WEBHOOK_URL_S7"] = vals.get("S7_DISCORD_WEBHOOK_URL", "")
+        os.environ["DISCORD_WEBHOOK_URL_S7"] = vals.get("S7_DISCORD_WEBHOOK_URL", "") if post else ""
+        if not post:
+            print("Discord: messages printed only (add --discord to post to the real channels)")
         os.environ["MONGO_DB"] = "strategy6" if a.prod else "strategy6_dev"
         os.environ["MONGO_DB_S7"] = "strategy7" if a.prod else "strategy7_dev"
         print(f"local run against database {os.environ['MONGO_DB']}")
