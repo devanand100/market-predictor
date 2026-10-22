@@ -92,3 +92,20 @@ live results nearer the neighbourhood than the headline.
 1. Paper trade it for at least 8 weeks and compare fills with the replay.
 2. Rerun Strategies 1–5 on `research_realtrade.py` to measure how much intrinsic pricing inflated each.
 3. Add Strategy 6 to the report and to a bot (the `three_sleeve_bot/` structure fits: three sleeves, a weekly calendar and a VIX gate).
+
+## 7. Crowded-seller measures (2026-10-23, `research_realtrade_crowding.py`)
+Seven measures known before the 09:30 entry were tested as "skip when sellers look crowded" filters on S2 and E0. The
+crowded third was set on 2021–23 and checked on 2024+. Measures: VRP; recent seller underpayment (actual move vs straddle,
+last 8 weeks); today's premium richness (ATM straddle / 0.8·spot·VIX·√T); client, pro and FII net short index options
+(z-score, previous day); weekly open interest vs the same day of the last 8 cycles.
+
+- **Only E0 + richness survives.** Skipping the expiry-day strangle when richness is below 1.434 (the 2021–23 bottom
+  third) lifts its PF from 1.94 to 2.22 in 2021–23 and from 1.66 to 2.21 in 2024+. PF rises steadily with stricter cuts in
+  both periods. Portfolio effect: PF 1.76 → 1.80, 2024+ CAGR unchanged (28.5 → 28.7% at ₹5L), full-period CAGR −1 to −2
+  points (fewer 2021 trades), same drawdown.
+- **Rejected:**
+  - Participant OI (retail/pro/FII crowding): high retail shorting was the best third in 2021–23 and the worst in 2024+,
+    with no stable sign.
+  - Open interest build-up.
+  - VRP and recent underpayment for S2: they help in 2021–23 and fail in 2024+.
+- **Caveat:** 14 tests and 1 survivor, with buckets of 15–30 trades. Treat it as a quality filter to watch, not proven.
