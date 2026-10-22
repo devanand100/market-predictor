@@ -60,6 +60,12 @@ Every daily report has a **Health** field. An extra **⚠️ health alert** mess
 | VRP 20-day avg | VIX close − RV20, averaged over 20 sessions, below 0 (options no longer overpriced) |
 | Spread vs model | median spread cost at entry (bid/ask vs LTP) > 2× the modelled slippage, last 20 trades |
 
+**Kill switch (notify only).** The daily report also shows the kill switch from `research_killswitch.py`: it "would
+pause new entries" when drawdown reaches −15%, and "would resume" once the last 20 closed trades have PF ≥ 1.3. A red
+message is posted when it fires and a green one when it would resume. **Paper keeps trading either way.** State is kept
+in `state.ks` and each day's status in `days.kill_switch`. It is the best of 8 rules backtested: it never fires on
+real 2021–26 data and caps the synthetic 2020 COVID drawdown near −19%.
+
 The checks are stored in `days.health`. Thresholds are in `rules.py` (`ALERT_*`). Background: `docs/STRATEGY_6_REALTRADE.md` §7.
 
 ## Schedule (Asia/Kolkata, weekdays; holidays skipped in code)
@@ -89,7 +95,7 @@ python strategy6_bot/invoke.py PAUSE | RESUME         # stop / allow new entries
 python strategy6_bot/invoke.py FLATTEN                # next TICK closes everything
 python strategy6_bot/invoke.py SET_TOKEN --token X    # new Dhan token if renewal failed
 python strategy6_bot/invoke.py TEST --local           # in-process against the *_dev databases; no Discord posts (add --discord to post)
-python -m pytest strategy6_bot/tests -q               # 166 tests (parity tests need the engine cache)
+python -m pytest strategy6_bot/tests -q               # 169 tests (parity tests need the engine cache)
 python strategy6_bot/deploy.py --remove               # delete function, schedules, alarms, roles (Mongo kept)
 ```
 

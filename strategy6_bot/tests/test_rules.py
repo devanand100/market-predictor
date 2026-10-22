@@ -103,3 +103,11 @@ def test_health_helpers():
     closes = [(f"d{i}", 100.0 * (1.01 if i % 2 else 0.99)) for i in range(25)]
     vs = R.vrp_series([(d, 20.0) for d, _ in closes], closes)
     assert len(vs) == 5 and vs[-1][1] == pytest.approx(20.0 - R.rv20([c for _, c in closes]))
+
+
+def test_kill_switch_rule():
+    assert R.kill_switch(False, -0.10, [])[:2] == (False, None)
+    assert R.kill_switch(False, -0.15, [])[:2] == (True, "fire")
+    assert R.kill_switch(True, -0.18, [-100] * 20)[:2] == (True, None)           # PF 0 -> stays paused
+    assert R.kill_switch(True, -0.18, [100] * 10)[:2] == (True, None)            # < 20 trades -> stays paused
+    assert R.kill_switch(True, -0.18, [200, -100] * 10)[:2] == (False, "resume")  # PF 2.0 over 20 trades

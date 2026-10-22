@@ -487,3 +487,36 @@ def test_spread_alert(bot):
     bot.trades.update_one({"_id": t["_id"]}, {"$set": {"legs": legs}})
     out, health, alert = _eod()
     assert out["health"]["Spread vs model"] is False and "Spread" in alert["description"]
+
+
+# ---------------------------------------------------------------- kill switch (notify only)
+def _titles():
+    return [e["title"] for e in N.sent[-1]["embeds"]]
+
+
+def test_kill_switch_fires_notifies_and_trading_continues(bot):
+    J.update_state(set_={"peak": 400_000.0})                     # drawdown -25%
+    out = run("EOD", WEEK[0])
+    assert out["kill_switch"] == {"active": True, "event": "fire"}
+    assert any("kill switch would PAUSE" in t for t in _titles())
+    assert J.get_state()["ks"]["active"] is True
+    out = run("EOD", WEEK[1])                                      # still down: no repeat message
+    assert out["kill_switch"] == {"active": True, "event": None}
+    assert not any("kill switch" in t for t in _titles())
+    rep = next(e for e in N.sent[-1]["embeds"] if "daily report" in e["title"])
+    assert any(f["name"].startswith("Kill switch") and "WOULD PAUSE" in f["value"] for f in rep["fields"])
+    out = run("ENTRY_0931", WEEK[2])                               # notify only: paper still trades
+    assert outcomes(out)["S2"] == "enter"
+
+
+def test_kill_switch_resumes_after_good_trades(bot):
+    import datetime as _dt
+    J.update_state(set_={"peak": 400_000.0})
+    run("EOD", WEEK[0])
+    for i in range(20):
+        bot.trades.insert_one({"_id": f"W{i}", "key": f"W{i}", "src": "paper", "status": "closed",
+                               "net": 2000 if i % 2 else -1000, "exit_ts": _dt.datetime(2026, 12, 1, 10, i), "legs": []})
+    out = run("EOD", WEEK[1])
+    assert out["kill_switch"] == {"active": False, "event": "resume"}
+    assert any("kill switch would RESUME" in t for t in _titles())
+    assert bot.days.find_one({"d": WEEK[1]})["kill_switch"]["event"] == "resume"

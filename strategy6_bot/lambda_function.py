@@ -659,12 +659,30 @@ def a_eod(ctx, event):
     errs = sum(day_doc["errors"].values())
     if errs:
         fields.append({"name": "Errors today", "value": str(errs)})
+    nets = [t.get("net") or 0 for t in J.db().trades.find({"src": "paper", "status": "closed"}, {"net": 1, "exit_ts": 1})
+            .sort("exit_ts", -1).limit(R.KILL_RESUME_TRADES)][::-1]
+    ks = st.get("ks") or {}
+    ks_on, ks_event, ks_why = R.kill_switch(bool(ks.get("active")), dd, nets)
+    if ks_event:
+        ks = {"active": ks_on, "since": today if ks_on else None, "last_event": ks_event, "last_d": today, "why": ks_why}
+        J.update_state(set_={"ks": ks})
     checks = health(dh, today, dd)
     bad = [c for c in checks if not c[1]]
     fields.append({"name": "Health", "value": "\n".join(f"{'✅' if ok else '⚠️'} {n}: {t}" for n, ok, t in checks),
                    "inline": False})
-    J.upsert_day(ctx, today, {"health": [{"name": n, "ok": ok, "text": t} for n, ok, t in checks]})
+    fields.append({"name": "Kill switch (notify only)",
+                   "value": (f"🛑 WOULD PAUSE new entries since {ks.get('since')}: {ks_why}" if ks_on
+                             else f"✅ {ks_why}") + ". Paper keeps trading.", "inline": False})
+    J.upsert_day(ctx, today, {"health": [{"name": n, "ok": ok, "text": t} for n, ok, t in checks],
+                              "kill_switch": {"active": ks_on, "event": ks_event, "why": ks_why}})
     N.send("daily_report", f"📊 {B.label} daily report {today}", "", N.GREEN if day_doc["realised_today"] >= 0 else N.RED, fields)
+    if ks_event == "fire":
+        N.send("errors", f"🛑 {B.label}: kill switch would PAUSE new entries", f"{ks_why}. With real money the bot would "
+               f"stop opening trades now and resume once the last {R.KILL_RESUME_TRADES} trades show PF ≥ "
+               f"{R.KILL_RESUME_PF:g}. **Paper keeps trading** so the record continues (research_killswitch.py).", N.RED)
+    elif ks_event == "resume":
+        N.send("errors", f"✅ {B.label}: kill switch would RESUME", f"{ks_why}. Paused since {(st.get('ks') or {}).get('since')}.",
+               N.GREEN)
     if bad:
         N.send("errors", f"⚠️ {B.label}: {len(bad)} health alert(s)",
                "\n".join(f"**{n}**: {t}" for n, _, t in bad)
@@ -672,7 +690,8 @@ def a_eod(ctx, event):
                N.ORANGE)
     if cal.next_trading_day(today).isocalendar()[1] != cal.d(today).isocalendar()[1]:
         weekly_summary(today)
-    return {"equity": eq, "mark": mark, "dd": dd, "health": {n: ok for n, ok, _ in checks}}
+    return {"equity": eq, "mark": mark, "dd": dd, "health": {n: ok for n, ok, _ in checks},
+            "kill_switch": {"active": ks_on, "event": ks_event}}
 
 
 def health(dh, today, dd):
