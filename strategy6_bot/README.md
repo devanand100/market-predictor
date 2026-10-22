@@ -1,4 +1,4 @@
-# strategy6_bot: Strategy 6 paper trader (₹4L)
+# strategy6_bot: Strategy 6 paper trader (₹5L)
 
 Paper-trades Strategy 6 (`../docs/STRATEGY_6_REALTRADE.md`) live on Dhan market data. **No orders are placed.**
 It runs on AWS Lambda with EventBridge Scheduler, journals everything to MongoDB (database `strategy6`) and
@@ -20,8 +20,9 @@ entry message shows "Margin model / Dhan" and "Margin available". Open trades th
 is unavailable, the bot enters on the model margin and the message says "Dhan check unavailable". On 2026-10-22 Dhan asked
 ₹1.72L for one strangle lot against the model's ₹1.33L (9%), so the real check matters.
 
-**Capital: ₹4L since 2026-10-22** (`S6_CAPITAL=400000` in `.env`; it was ₹3L at the first deploy). At ₹4L one strangle lot
-(Dhan ~₹1.72L) or one expiry-day lot (~₹2.1L on expiry day) fits, never both at once. **Before every strangle entry the bot asks Dhan's margin calculator** for those exact
+**Capital: ₹5L since 2026-10-22** (`S6_CAPITAL=500000` in `.env`; ₹3L at the first deploy, then ₹4L). At Dhan's real margin
+(~11.6% of notional, ~13.6% on expiry day) ₹3L trades only the gap buy in 2026, ₹4L blocks the expiry-day strangle while the week's
+strangle is open, and ₹5L fits both (~₹1.72L + ~₹2.1L). Backtest at real margin from Jan 2024: ₹4L 19.7% a year, ₹5L 23.5%, DD about −12%. **Before every strangle entry the bot asks Dhan's margin calculator** for those exact
 legs and lots. If Dhan's figure is above the room left (90% of equity minus open margin), it trades fewer lots or skips, and the
 entry message shows "Margin model / Dhan" and "Margin available". Open trades then count Dhan's figure. If Dhan's calculator
 is unavailable, the bot enters on the model margin and the message says "Dhan check unavailable". On 2026-10-22 Dhan asked
@@ -43,7 +44,7 @@ No retries; async retries 0; reserved concurrency 1. A TICK with nothing open re
 ## Setup and deploy
 ```bash
 python strategy6_bot/setup_discord.py --test     # creates #strategy6-paper + webhook -> S6_DISCORD_WEBHOOK_URL in .env
-# .env also needs S6_CAPITAL=400000 (plus the shared DHAN_*, MONGODB_URI, ALERT_EMAIL)
+# .env also needs S6_CAPITAL=500000 (plus the shared DHAN_*, MONGODB_URI, ALERT_EMAIL)
 python strategy6_bot/deploy.py --test            # Lambda Strategy6PaperBot, schedules group strategy6, alarms, INIT, TEST
 ```
 
