@@ -219,7 +219,8 @@ def test_test_action_records_nothing(bot):
 
 
 def test_holiday_skip_touches_nothing(bot, monkeypatch):
-    monkeypatch.setattr(J, "_db", None)              # any Mongo access would now try a real connection
+    monkeypatch.setattr(J, "_client", None)          # any Mongo access would now try a real connection
+    monkeypatch.delenv("MONGODB_URI", raising=False)
     assert "skipped" in L.lambda_handler({"action": "TICK", "date": "2026-12-05"})          # Saturday
     assert "skipped" in L.lambda_handler({"action": "ENTRY_0931", "date": "2026-11-10"})    # NSE holiday
 
@@ -315,3 +316,122 @@ def test_open_dhan_margin_blocks_expiry_day_lot(bot, monkeypatch):
     out = run("ENTRY_0931", WEEK[4])
     e0 = next(d for d in out["decisions"] if d["sleeve"] == "E0")
     assert e0["outcome"] == "skip"
+
+
+# ---------------------------------------------------------------- two books in one Lambda (Strategy 6 + Strategy 7)
+MON_EXP = "2026-12-29"
+
+
+@pytest.fixture()
+def two_books(bot, monkeypatch):
+    monkeypatch.setattr(L, "CAPITAL_S7", 1_500_000.0)
+    monkeypatch.delenv("DISCORD_WEBHOOK_URL_S7", raising=False)
+    monkeypatch.delenv("MONGO_DB_S7", raising=False)
+    s7 = bot.client[bot.name + "_s7"]
+    J.use(s7.name)
+    J.update_state(set_={"exp_seen": [PREV_EXP]})
+    J.use(None)
+    calls = {"oc": 0}
+    orig = FakeDhan.option_chain
+
+    def counted(self, expiry):
+        calls["oc"] += 1
+        return orig(self, expiry)
+    monkeypatch.setattr(FakeDhan, "option_chain", counted)
+
+    def closes(self, security_id, before, days=45):
+        prev = cal.prev_trading_day(before)
+        if security_id == L.VIX_ID:
+            return [(prev, self.vix_prev)]
+        hist = [22000 * (1 + 0.002 * math.sin(i)) for i in range(40)]
+        return [(f"d{i}", c) for i, c in enumerate(hist[:-1])] + [(prev, self.prev_close)]
+    monkeypatch.setattr(FakeDhan, "daily_closes", closes)
+    return bot, s7, calls
+
+
+def run_books(action, date, time=None, **kw):
+    before = len(N.sent)
+    out = L.lambda_handler({"action": action, "date": date, **({"time": time} if time else {}), **kw})
+    books = [m["book"] for m in N.sent[before:]]
+    assert len(books) == len(set(books)), f"{action}: more than one Discord message for a book {books}"
+    return out
+
+
+def test_two_books_trade_separately_with_one_chain_call(two_books):
+    s6db, s7db, calls = two_books
+    out = run_books("ENTRY_0931", WEEK[2])
+    assert set(out) == {"s6", "s7"}
+    assert calls["oc"] == 1                                     # one option chain shared by both books
+    t6, t7 = s6db.trades.find_one({"sleeve": "S2"}), s7db.trades.find_one({"sleeve": "S2"})
+    assert t6["lots"] == 1 and t6["margin_model"] == round(0.09 * 22400 * 65)         # Rs 3L, 9% model, 0.55
+    assert t7["lots"] == R.short_lots(1_500_000, 22400, 0.45, False, 0, 0.116)[0] == 3  # Rs 15L, 11.6% model, 0.45
+    assert t7["margin_model"] == round(0.116 * 22400 * 65 * 3)
+    msgs = {m["book"]: m for m in N.sent[-2:]}
+    assert set(msgs) == {"s6", "s7"}
+    assert msgs["s7"]["embeds"][-1]["footer"]["text"].startswith("Strategy 7")
+    assert not s7db.state.find_one({"_id": J.STATE_ID}).get("dhan_token")   # token lives in the primary book only
+
+
+def test_tick_prefetches_once_and_closes_each_book(two_books, monkeypatch):
+    s6db, s7db, _ = two_books
+    run_books("ENTRY_0931", WEEK[2])
+    ltp_calls = {"n": 0}
+    orig = FakeDhan.ltp
+
+    def counted(self, ids=(), with_index=True):
+        ltp_calls["n"] += 1
+        return orig(self, ids, with_index)
+    monkeypatch.setattr(FakeDhan, "ltp", counted)
+    FakeDhan.spot = 23000.0
+    out = run_books("TICK", WEEK[2], "13:07")
+    assert ltp_calls["n"] == 1
+    assert out["s6"]["closed"] and out["s7"]["closed"]
+    assert s6db.trades.find_one({"sleeve": "S2"})["exit_reason"].startswith("stop")
+    assert s7db.trades.find_one({"sleeve": "S2"})["exit_reason"].startswith("stop")
+
+
+def test_monthly_straddle_only_in_strategy7(two_books):
+    s6db, s7db, _ = two_books
+    day = next(d for d in ["2026-11-13", "2026-11-16", "2026-11-17"]
+               if 41 <= cal.dte(MON_EXP, d) <= 45 < cal.dte(MON_EXP, cal.prev_trading_day(d)))
+    out = run_books("MONTHLY_1015", day)
+    assert set(out) == {"s7"}
+    dec = out["s7"]["decisions"][0]
+    assert dec["outcome"] == "enter", dec
+    t = s7db.trades.find_one({"sleeve": "MON"})
+    assert t["legs"][0]["K"] == t["legs"][1]["K"] and t["lots"] >= 1 and t["margin_dhan"] == 123456
+    assert s6db.trades.count_documents({"sleeve": "MON"}) == 0
+    exit_day = next(d for d in cal.sessions_between(day, MON_EXP) if cal.dte(MON_EXP, d) <= 21)
+    run_books("TICK", exit_day, "11:00")                         # no stop and no 15:15 exit for the monthly
+    assert s7db.trades.find_one({"_id": t["_id"]})["status"] == "open"
+    out = run_books("MONTHLY_1015", exit_day)
+    assert out["s7"]["exits"] == [t["_id"]]
+    assert s7db.trades.find_one({"_id": t["_id"]})["status"] == "closed"
+
+
+def test_one_book_failing_does_not_stop_the_other(two_books, monkeypatch):
+    s6db, s7db, _ = two_books
+    orig = R.short_lots
+
+    def broken(equity, spot, weight, expiry_day, used, base=None):
+        if base == R.S7_MARGIN_PCT:
+            raise ValueError("s7 sizing exploded")
+        return orig(equity, spot, weight, expiry_day, used, base)
+    monkeypatch.setattr(R, "short_lots", broken)
+    with pytest.raises(RuntimeError, match="s7"):
+        L.lambda_handler({"action": "ENTRY_0931", "date": WEEK[2]})
+    assert s6db.trades.find_one({"sleeve": "S2"}) is not None and s7db.trades.count_documents({}) == 0
+    msgs = {m["book"]: m for m in N.sent[-2:]}
+    assert any("failed" in e["title"] for e in msgs["s7"]["embeds"])
+    assert not any("failed" in e["title"] for e in msgs["s6"]["embeds"])
+
+
+def test_book_filter_and_primary_only_actions(two_books):
+    s6db, s7db, _ = two_books
+    out = run_books("STATUS", WEEK[2], book="s7")
+    assert out["capital"] == 1_500_000 and out["book"] == "Strategy 7"
+    run_books("PAUSE", WEEK[2], book="s7")
+    out = run_books("ENTRY_0931", WEEK[2])
+    assert {d["outcome"] for d in out["s7"]["decisions"]} == {"skip"} and s6db.trades.count_documents({}) == 1
+    out = run_books("RENEW_TOKEN", WEEK[2])
+    assert out["renewed"] and s6db.state.find_one({"_id": J.STATE_ID})["dhan_token"].startswith("x")

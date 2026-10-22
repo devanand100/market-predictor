@@ -44,3 +44,52 @@ def test_exits():
     assert R.stop_hit(60.0, 120.0, 1.0) and not R.stop_hit(60.0, 119.9, 1.0)
     assert R.gap_target(101.0) == 202.0
     assert R.gap_target_hit(202.0, 202.05) and not R.gap_target_hit(202.0, 202.04)
+
+
+# ---------------------------------------------------------------- monthly straddle (Strategy 7 book)
+def test_rv20_matches_pandas():
+    import math
+    import numpy as np
+    import pandas as pd
+    closes = list(25000 * np.exp(np.cumsum(np.random.default_rng(3).normal(0, 0.01, 40))))
+    s = pd.Series(closes)
+    want = np.log(s).diff().rolling(20).std().iloc[-1] * math.sqrt(252) * 100
+    assert R.rv20(closes) == pytest.approx(want, rel=1e-12)
+    assert R.rv20(closes[:20]) is None
+
+
+def test_monthly_entry_exit_dte():
+    assert R.mon_entry_due(45, 46) and R.mon_entry_due(42, 49)       # first session at <= 45
+    assert not R.mon_entry_due(44, 45)                               # not the first such session
+    assert not R.mon_entry_due(40, 47)                               # < 41 DTE: research skips
+    assert R.mon_exit_due(21) and not R.mon_exit_due(22)
+
+
+def test_forward_matches_research_chain():
+    import math
+    from research_monthly_straddle import Chain
+    px = {}
+    for k in range(24500, 25550, 50):
+        px[(k, "CE")] = max(25030 - k, 0) + 120 * math.exp(-abs(k - 25030) / 400)
+        px[(k, "PE")] = max(k - 25030, 0) + 120 * math.exp(-abs(k - 25030) / 400)
+    c = Chain(spot=25010.0, px=px)
+    simple = {k: (px[(k, "CE")], px[(k, "PE")]) for k in range(24500, 25550, 50)}
+    assert R.forward(simple, 25010.0) == pytest.approx(c.forward())
+    K, F = R.mon_strike(simple, 25010.0)
+    assert K == min((k for k in simple), key=lambda k: abs(k - c.forward()))
+
+
+def test_s7_parameters_match_research():
+    import research_realtrade_s7 as s7
+    import final_realtrade_s7 as f7
+    assert f7.W_MON == R.S7_W_MON and s7.DHAN_MARGIN == R.S7_MARGIN_PCT
+    assert R.VRP_MIN == 2.0 and (R.MON_ENTRY_DTE, R.MON_ENTRY_MIN_DTE, R.MON_EXIT_DTE) == (45, 41, 21)
+    import inspect
+    src = inspect.getsource(s7.s6)
+    assert "w2=0.45, we=0.45, fg=0.05" in src and (R.S7_W_S2, R.S7_W_E0, R.S7_F_GAP) == (0.45, 0.45, 0.05)
+
+
+def test_mon_lots_match_research_sizing():
+    lots, cap = R.mon_lots(1_500_000, 22800, 0)
+    assert cap == pytest.approx(0.116 * 22800 * 65) and lots == int(0.20 * 1_500_000 // cap) == 1
+    assert R.mon_lots(1_500_000, 22800, 1_300_000)[0] == 0            # 90% cap

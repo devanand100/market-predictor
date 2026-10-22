@@ -9,7 +9,8 @@ One-command deploy / update of the Strategy 6 PAPER bot (adapted from three_slee
 Creates / updates in AWS_REGION (default ap-south-1), all named Strategy6PaperBot* / strategy6*:
   * IAM role for Lambda (CloudWatch Logs only) and a role for EventBridge Scheduler (invoke this function only)
   * Lambda: python3.13, arm64, zip, 256 MB, 120 s; env from the repo .env (secrets live only in Lambda env)
-      - CAPITAL <- S6_CAPITAL, DISCORD_WEBHOOK_URL <- S6_DISCORD_WEBHOOK_URL, MONGO_DB = strategy6
+      - books: Strategy 6 (CAPITAL <- S6_CAPITAL, DISCORD_WEBHOOK_URL <- S6_DISCORD_WEBHOOK_URL, MONGO_DB strategy6)
+        and Strategy 7 (CAPITAL_S7 <- S7_CAPITAL, DISCORD_WEBHOOK_URL_S7 <- S7_DISCORD_WEBHOOK_URL, MONGO_DB_S7 strategy7)
       - async invoke config: 0 retries, max event age 60 s (no duplicate runs after a failure)
       - reserved concurrency 1 (one run at a time)
       - JSON logs; log group retention 14 days
@@ -48,14 +49,16 @@ TOPIC = "strategy6-alarms"
 RUNTIME_FILES = ["lambda_function.py", "rules.py", "costs.py", "dhan.py", "journal.py", "notify.py",
                  "market_calendar.py"]
 CONFIG_KEYS = ["DHAN_CLIENT_ID", "DHAN_ACCESS_TOKEN", "MONGODB_URI", "EXTRA_HOLIDAYS"]
-RENAMED_KEYS = {"S6_CAPITAL": "CAPITAL", "S6_DISCORD_WEBHOOK_URL": "DISCORD_WEBHOOK_URL"}   # .env key -> Lambda env
-MONGO_DB = "strategy6"
+RENAMED_KEYS = {"S6_CAPITAL": "CAPITAL", "S6_DISCORD_WEBHOOK_URL": "DISCORD_WEBHOOK_URL",      # .env key -> Lambda env
+                "S7_CAPITAL": "CAPITAL_S7", "S7_DISCORD_WEBHOOK_URL": "DISCORD_WEBHOOK_URL_S7"}
+MONGO_DB, MONGO_DB_S7 = "strategy6", "strategy7"
 WD = "MON-FRI"
 # (name, IST cron, action). The function skips NSE holidays itself; RENEW_TOKEN runs every day.
 SCHEDULES = [
     ("RenewToken", "cron(0 6,18 * * ? *)", "RENEW_TOKEN"),
     ("Heartbeat", f"cron(45 8 ? * {WD} *)", "HEARTBEAT"),
     ("Entry0931", f"cron(31 9 ? * {WD} *)", "ENTRY_0931"),
+    ("Monthly1015", f"cron(15 10 ? * {WD} *)", "MONTHLY_1015"),     # Strategy 7 book: monthly straddle
     ("TickMorning", f"cron(32-59 9 ? * {WD} *)", "TICK"),          # every minute: research checks stops each minute
     ("TickDay", f"cron(* 10-14 ? * {WD} *)", "TICK"),
     ("TickClose", f"cron(0-16 15 ? * {WD} *)", "TICK"),
@@ -121,7 +124,7 @@ def wait_ready(lam):
 def deploy_function(lam, logs, role_arn, code):
     env = {k: E(k) for k in CONFIG_KEYS if E(k) not in (None, "")}
     env.update({dst: E(src) for src, dst in RENAMED_KEYS.items()})
-    env["MONGO_DB"] = MONGO_DB
+    env["MONGO_DB"], env["MONGO_DB_S7"] = MONGO_DB, MONGO_DB_S7
     env["STRATEGY_VERSION"] = strategy_version()
     log_group = f"/aws/lambda/{FUNCTION}"
     try:

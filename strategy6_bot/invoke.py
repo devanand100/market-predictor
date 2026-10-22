@@ -30,11 +30,12 @@ def main():
     ap.add_argument("--time")
     ap.add_argument("--token")
     ap.add_argument("--tid")
+    ap.add_argument("--book", choices=["s6", "s7"], help="run one book only (default: all books)")
     ap.add_argument("--local", action="store_true", help="run in-process (uses the repo .env)")
     ap.add_argument("--prod", action="store_true", help="with --local: use the live database instead of *_dev")
     a = ap.parse_args()
     event = {"action": a.action.upper(), "by": "invoke.py"}
-    for k in ("date", "time", "token", "tid"):
+    for k in ("date", "time", "token", "tid", "book"):
         if getattr(a, k):
             event[k] = getattr(a, k)
 
@@ -46,7 +47,10 @@ def main():
     if a.local:
         os.environ["CAPITAL"] = vals["S6_CAPITAL"]
         os.environ["DISCORD_WEBHOOK_URL"] = vals.get("S6_DISCORD_WEBHOOK_URL", "")
+        os.environ["CAPITAL_S7"] = vals.get("S7_CAPITAL", "0")
+        os.environ["DISCORD_WEBHOOK_URL_S7"] = vals.get("S7_DISCORD_WEBHOOK_URL", "")
         os.environ["MONGO_DB"] = "strategy6" if a.prod else "strategy6_dev"
+        os.environ["MONGO_DB_S7"] = "strategy7" if a.prod else "strategy7_dev"
         print(f"local run against database {os.environ['MONGO_DB']}")
         import lambda_function
         print(json.dumps(lambda_function.lambda_handler(event), indent=1, default=str)[:6000])

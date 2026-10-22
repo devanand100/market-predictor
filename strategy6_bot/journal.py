@@ -15,23 +15,37 @@ import os
 
 SCHEMA_V = 1
 _client = None
-_db = None
+_default = None     # the primary book's database (Strategy 6; holds the Dhan token and the run lease)
+_cur = None         # the database of the book being processed
 
 
-def db():
-    global _client, _db
-    if _db is None:
+def _mongo():
+    global _client
+    if _client is None:
         from pymongo import MongoClient
         _client = MongoClient(os.environ["MONGODB_URI"], maxPoolSize=1, serverSelectionTimeoutMS=5000,
                               connectTimeoutMS=5000, retryWrites=False, appname="strategy6-bot")
-        _db = _client[os.environ.get("MONGO_DB", "strategy6")]
-    return _db
+    return _client
+
+
+def default_name():
+    return _default or os.environ.get("MONGO_DB", "strategy6")
+
+
+def db():
+    return _mongo()[_cur or default_name()]
+
+
+def use(name):
+    """Switch the journal to one book's database (None = the primary book)."""
+    global _cur
+    _cur = name
 
 
 def set_db(database):
-    """Tests inject a mongomock database."""
-    global _db
-    _db = database
+    """Tests inject a mongomock database; it becomes the primary book's database."""
+    global _client, _default, _cur
+    _client, _default, _cur = database.client, database.name, database.name
 
 
 def ensure_indexes():

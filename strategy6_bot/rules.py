@@ -13,6 +13,9 @@ against the research trades. "VIX" is always the PREVIOUS session's India VIX cl
        Limit sell at 2 x fill, else 15:15 on expiry day. 5% of equity in premium.
   Total margin (shorts) + premium (longs) is capped at 90% of equity.
 """
+import math
+import statistics
+
 from costs import LOT, slip
 
 STEP = 50
@@ -28,6 +31,12 @@ W_S2, W_E0, F_GAP = 0.55, 0.55, 0.05
 S2_DTE, S2_MULT, S2_STOP = 2, 1.25, 1.0
 E0_MULT, E0_STOP = 0.5, 0.5
 GAP_DTE, GAP_TP = 4, 1.0
+# Strategy 7 book (docs/STRATEGY_7_REALTRADE.md): Strategy 6 at the research weights + the monthly straddle,
+# sized on Dhan-level margin (Dhan quoted Rs 1.72L per strangle lot on 2026-10-22 = 11.6% of notional)
+S7_MARGIN_PCT = 0.116
+S7_W_S2, S7_W_E0, S7_F_GAP, S7_W_MON = 0.45, 0.45, 0.05, 0.20
+VRP_MIN = 2.0
+MON_ENTRY_DTE, MON_ENTRY_MIN_DTE, MON_EXIT_DTE = 45, 41, 21
 EXIT_HHMM = "15:16"           # first 1-minute tick after the 15:15 bar
 MONTHLY_RUNNING_COSTS = 590.0  # Rs/month: Dhan Data API incl. GST. Lambda, MongoDB free tier and Discord cost nothing.
 
@@ -102,23 +111,23 @@ def gap_side(spot_0930, prev_close):
 
 
 # ---------------------------------------------------------------- sizing
-def margin_pct(expiry_day):
-    return MARGIN_PCT + (EXPIRY_ELM if expiry_day else 0.0)
+def margin_pct(expiry_day, base=None):
+    return (MARGIN_PCT if base is None else base) + (EXPIRY_ELM if expiry_day else 0.0)
 
 
-def short_lots(equity, spot, weight, expiry_day, used):
+def short_lots(equity, spot, weight, expiry_day, used, base=None):
     """Whole lots for a naked strangle: weight x equity of margin, never above MAX_UTIL x equity in total."""
-    cap = margin_pct(expiry_day) * spot * LOT
+    cap = margin_pct(expiry_day, base) * spot * LOT
     lots = int(weight * equity // cap)
     return max(0, min(lots, int((MAX_UTIL * equity - used) // cap))), cap
 
 
-def gap_lots(equity, ltp, used):
+def gap_lots(equity, ltp, used, frac=None):
     """Premium per lot is priced at the pre-slippage LTP, as research_realtrade.Weekly does."""
     cap = ltp * LOT
     if cap <= 0:
         return 0, cap
-    lots = int(F_GAP * equity // cap)
+    lots = int((F_GAP if frac is None else frac) * equity // cap)
     return max(0, min(lots, int((MAX_UTIL * equity - used) // cap))), cap
 
 
@@ -139,3 +148,50 @@ def gap_target(fill):
 def gap_target_hit(target, ltp):
     """Research fills the resting limit when the 1-minute high trades >= target + 0.05."""
     return ltp >= target + 0.05
+
+
+# ---------------------------------------------------------------- monthly straddle (Strategy 7 book)
+# Same rules as three_sleeve_bot/rules.py (parity-tested there against research_monthly_straddle.py).
+def rv20(closes):
+    """Annualised % stdev of the last 20 daily log returns (needs >= 21 closes, oldest first)."""
+    c = closes[-21:]
+    if len(c) < 21:
+        return None
+    r = [math.log(b / a) for a, b in zip(c[:-1], c[1:])]
+    return statistics.stdev(r) * math.sqrt(252) * 100
+
+
+def vrp(vix_prev_close, closes_upto_prev):
+    rv = rv20(closes_upto_prev)
+    return (None, rv) if rv is None or vix_prev_close is None else (vix_prev_close - rv, rv)
+
+
+def mon_entry_due(expiry_dte, prev_session_dte):
+    """First session at <= 45 DTE, and only if it is still >= 41 DTE."""
+    return MON_ENTRY_MIN_DTE <= expiry_dte <= MON_ENTRY_DTE < prev_session_dte
+
+
+def mon_exit_due(expiry_dte):
+    return expiry_dte <= MON_EXIT_DTE
+
+
+def forward(chain, spot):
+    """chain: {strike: (ce, pe)} with both prices > 0. Median of K + C - P over the 3 strikes nearest spot."""
+    both = sorted((k for k, (c, p) in chain.items() if c and p), key=lambda k: abs(k - spot))[:3]
+    if not both:
+        return None
+    return float(statistics.median([k + chain[k][0] - chain[k][1] for k in both]))
+
+
+def mon_strike(chain, spot):
+    F = forward(chain, spot)
+    if F is None:
+        return None, None
+    both = [k for k, (c, p) in chain.items() if c and p]
+    return min(both, key=lambda k: abs(k - F)), F
+
+
+def mon_lots(equity, spot, used, base=S7_MARGIN_PCT, weight=S7_W_MON):
+    """research_realtrade_s7.MonthlyReal: weight x equity of margin, never above MAX_UTIL x equity in total."""
+    cap = base * spot * LOT
+    return max(0, min(int(weight * equity // cap), int((MAX_UTIL * equity - used) // cap))), cap

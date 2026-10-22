@@ -3,6 +3,7 @@ ONE-OFF, run locally: create the Strategy 6 bot's Discord channel and its webhoo
 
   python strategy6_bot/setup_discord.py            # idempotent: reuses the channel/webhook if they exist
   python strategy6_bot/setup_discord.py --test     # also posts a test message
+  python strategy6_bot/setup_discord.py --book s7  # the Strategy 7 book: #strategy7-paper -> S7_DISCORD_WEBHOOK_URL
 
 Reads DISCORD_BOT_TOKEN and DISCORD_GUILD_ID from the repo .env and writes S6_DISCORD_WEBHOOK_URL back into
 that .env (the URL is never printed). The Lambda only gets the webhook URL; the bot token stays here.
@@ -46,12 +47,18 @@ def api(method, path, token, body=None):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--test", action="store_true")
+    ap.add_argument("--book", choices=["s6", "s7"], default="s6")
     a = ap.parse_args()
     env = envfile.load()
     token, guild = env.get("DISCORD_BOT_TOKEN"), env.get("DISCORD_GUILD_ID")
     if not token or not guild:
         sys.exit("DISCORD_BOT_TOKEN and DISCORD_GUILD_ID must be set in .env")
 
+    global CHANNEL, TOPIC, WEBHOOK_NAME
+    key = "S6_DISCORD_WEBHOOK_URL"
+    if a.book == "s7":
+        CHANNEL, WEBHOOK_NAME, key = "strategy7-paper", "strategy7-bot", "S7_DISCORD_WEBHOOK_URL"
+        TOPIC = "Strategy 7 PAPER book (Strategy 6 + monthly straddle): signals, trades, daily report, errors (one message per run)"
     chans = api("GET", f"/guilds/{guild}/channels", token)
     ch = next((c for c in chans if c["type"] == 0 and c["name"] == CHANNEL and not c.get("parent_id")), None)
     if ch is None:
@@ -65,8 +72,8 @@ def main():
         hook = api("POST", f"/channels/{ch['id']}/webhooks", token, {"name": WEBHOOK_NAME})
         print(f"#{CHANNEL}: webhook created")
     url = f"https://discord.com/api/webhooks/{hook['id']}/{hook['token']}"
-    envfile.set_keys({"S6_DISCORD_WEBHOOK_URL": url})
-    print(f"S6_DISCORD_WEBHOOK_URL written to {envfile.ENV_PATH} (value not shown).")
+    envfile.set_keys({key: url})
+    print(f"{key} written to {envfile.ENV_PATH} (value not shown).")
 
     if a.test:
         body = json.dumps({"embeds": [{"title": "✅ Webhook test", "color": 0x2ecc71,

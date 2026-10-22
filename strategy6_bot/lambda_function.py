@@ -1,16 +1,27 @@
 """
-Strategy 6 PAPER trading bot (docs/STRATEGY_6_REALTRADE.md). AWS Lambda + EventBridge Scheduler
-(Asia/Kolkata) + Dhan market data + MongoDB journal + one Discord message per run. Places NO orders.
+PAPER trading bot for two separate books in one Lambda (AWS Lambda + EventBridge Scheduler (Asia/Kolkata) + Dhan
+market data + MongoDB journal + Discord). Places NO orders.
+
+Books (each its own capital, MongoDB database and Discord channel):
+  s6  Strategy 6 (docs/STRATEGY_6_REALTRADE.md): S2 / E0 strangles (VIX >= 15) + gap buy (VIX <= 13), weights
+      0.55 / 0.55 / 0.05, 9% margin model. Primary book: holds the Dhan token and the run lease.
+  s7  Strategy 7 (docs/STRATEGY_7_REALTRADE.md): Strategy 6 at 0.45 / 0.45 / 0.05 + monthly straddle (VRP >= 2,
+      20%), 11.6% margin model. Enabled when CAPITAL_S7 is set.
+One Dhan token (renewed once, stored in the s6 state) and one set of market-data calls per run, shared by both
+books, so they never compete for Dhan's rate limits. A failure in one book is journalled and notified in that
+book only; the other book still runs, and the run then fails so the CloudWatch alarm fires.
 
 Scheduled actions (deploy.py), all IST, holidays skipped in code before any Dhan/Mongo call:
-  RENEW_TOKEN    06:00, 18:00 daily        validate / renew the Dhan token stored in Mongo
-  HEARTBEAT      08:45                     token, cycle, previous VIX close, plan for today
-  ENTRY_0931     09:31                     S2 / E0 / GAP decisions on the 09:30 prices
-  TICK           every minute 09:32-15:16  S2/E0 stops, GAP limit target, 15:15 expiry exits, flatten
+  RENEW_TOKEN    06:00, 18:00 daily        validate / renew the Dhan token (primary book)
+  HEARTBEAT      08:45                     token, cycle, previous VIX close, plan for today (each book)
+  ENTRY_0931     09:31                     S2 / E0 / GAP decisions on the 09:30 prices (each book)
+  MONTHLY_1015   10:15                     monthly straddle exit / entry (books with the monthly sleeve)
+  TICK           every minute 09:32-15:16  stops, GAP limit target, 15:15 expiry exits, flatten (each book)
   EOD            15:40                     equity, margin (model and Dhan), daily report (+ weekly summary)
-Manual (invoke.py): STATUS, TEST, INIT, PAUSE, RESUME, FLATTEN, SET_TOKEN {"token"}, CLEAR_TRADE {"tid"}
-Event keys: {"action": "...", "date": "YYYY-MM-DD" (optional override), "time": "HH:MM" (optional override)}
+Manual (invoke.py): STATUS, TEST, INIT, PAUSE, RESUME, FLATTEN, SET_TOKEN {"token"}, CLEAR_TRADE {"tid", "book"}
+Event keys: {"action", "date" (optional), "time" (optional), "book" (optional: run one book only)}
 """
+import dataclasses
 import datetime as dt
 import hashlib
 import json
@@ -38,12 +49,85 @@ if hasattr(sys.stdout, "reconfigure"):
         pass
 
 env = os.environ.get
-CAPITAL = float(env("CAPITAL", "300000"))
+CAPITAL = float(env("CAPITAL", "300000"))                 # Strategy 6 book
+CAPITAL_S7 = float(env("CAPITAL_S7", "0") or 0)           # Strategy 7 book (0 = disabled)
 SV = env("STRATEGY_VERSION") or ("local-" + hashlib.sha1(json.dumps(R.params(), sort_keys=True).encode()).hexdigest()[:8])
-SCHEDULED = {"HEARTBEAT", "ENTRY_0931", "TICK", "EOD"}
+SCHEDULED = {"HEARTBEAT", "ENTRY_0931", "MONTHLY_1015", "TICK", "EOD"}
 NIFTY_ID, VIX_ID = 13, 21
 SHORTS = ("S2", "E0")
 STOP_MULT = {"S2": R.S2_STOP, "E0": R.E0_STOP}
+
+
+@dataclasses.dataclass
+class Book:
+    key: str
+    label: str
+    db: str
+    capital: float
+    webhook: str
+    w_s2: float
+    w_e0: float
+    f_gap: float
+    margin_base: float
+    monthly: bool = False
+    w_mon: float = 0.0
+
+
+def books():
+    out = [Book("s6", "Strategy 6", J.default_name(), CAPITAL, env("DISCORD_WEBHOOK_URL", ""),
+                R.W_S2, R.W_E0, R.F_GAP, R.MARGIN_PCT)]
+    if CAPITAL_S7 > 0:
+        out.append(Book("s7", "Strategy 7", env("MONGO_DB_S7") or J.default_name() + "_s7", CAPITAL_S7,
+                        env("DISCORD_WEBHOOK_URL_S7", ""), R.S7_W_S2, R.S7_W_E0, R.S7_F_GAP, R.S7_MARGIN_PCT,
+                        monthly=True, w_mon=R.S7_W_MON))
+    return out
+
+
+B = None          # the book being processed
+MKT = None        # the run's shared market-data client
+
+
+def activate(book):
+    global B
+    B = book
+    J.use(book.db)
+    N.use(book.key, book.webhook, f"{book.label} PAPER bot • no real orders")
+
+
+class Market:
+    """Dhan client shared by all books in one run: identical calls are made once (option chains, closes, expiry
+    list, token check) and one LTP call can be prefetched for every book's open legs."""
+
+    def __init__(self, dh):
+        self.dh, self._memo, self._ltp = dh, {}, None
+
+    def __getattr__(self, name):
+        return getattr(self.dh, name)
+
+    def _m(self, key, fn):
+        if key not in self._memo:
+            self._memo[key] = fn()
+        return self._memo[key]
+
+    def expiry_list(self):
+        return self._m("exp", self.dh.expiry_list)
+
+    def option_chain(self, expiry):
+        return self._m(("oc", expiry), lambda: self.dh.option_chain(expiry))
+
+    def daily_closes(self, sid, before, days=45):
+        return self._m(("dc", sid, str(before), days), lambda: self.dh.daily_closes(sid, before, days=days))
+
+    def token_info(self, tok=None):
+        return self.dh.token_info(tok) if tok else self._m("tok", self.dh.token_info)
+
+    def prefetch(self, ids):
+        self._ltp = self.dh.ltp(sorted({str(i) for i in ids}))
+
+    def ltp(self, ids=(), with_index=True):
+        if self._ltp is not None and all(str(i) in self._ltp for i in ids) and with_index:
+            return dict(self._ltp)
+        return self.dh.ltp(ids, with_index=with_index)
 
 
 # ================================================================ helpers
@@ -55,13 +139,13 @@ def now_ist(event):
     return n
 
 
-def dhan_for(state):
-    return Dhan(env("DHAN_CLIENT_ID", ""), (state or {}).get("dhan_token") or env("DHAN_ACCESS_TOKEN", ""))
+def dhan():
+    return MKT
 
 
 def equity(state):
     """Realised equity: capital + closed P&L - running costs."""
-    return CAPITAL + float(state.get("realised") or 0) - float(state.get("running") or 0)
+    return B.capital + float(state.get("realised") or 0) - float(state.get("running") or 0)
 
 
 def unrealised(opened, prices):
@@ -86,6 +170,20 @@ def dhan_margin(dh, ce, pe, lots):
     m = dh.margin([{"sid": ce["sid"], "side": -1, "qty": lots * costs.LOT, "px": ce["ltp"]},
                    {"sid": pe["sid"], "side": -1, "qty": lots * costs.LOT, "px": pe["ltp"]}])
     return round(m["total"]) if m and m.get("total") else None
+
+
+def margin_gate(dh, ce, pe, lots, eq, used, why):
+    """Check Dhan's real margin for the planned lots; cut lots to fit or refuse. -> (ok, lots, mdhan, avail, why)"""
+    avail = R.MAX_UTIL * eq - used
+    mdhan = dhan_margin(dh, ce, pe, lots)
+    if mdhan and mdhan > avail:
+        fit = int(avail // (mdhan / lots))
+        mdhan = dhan_margin(dh, ce, pe, fit) if fit >= 1 else mdhan
+        if fit < 1 or (mdhan and mdhan > avail):
+            return False, lots, mdhan, avail, (f"Dhan margin ₹{mdhan:,.0f} for {lots} lot(s) > available ₹{avail:,.0f} "
+                                               f"({R.MAX_UTIL:.0%} of equity minus open margin)")
+        return True, fit, mdhan, avail, f"Dhan margin cut {lots} → {fit} lot(s); {why}"
+    return True, lots, mdhan, avail, why
 
 
 def booked_margin(item):
@@ -118,6 +216,13 @@ def compact(tid, sleeve, legs, extra):
 def fmt_legs(legs):
     return "\n".join(f"{'BUY' if l['side'] > 0 else 'SELL'} {l['qty']} × {l['K']} {l['typ']} @ {l['fill']:.2f}"
                      f" (ltp {l['ltp']:.2f}, bid/ask {l.get('bid') or 0:.2f}/{l.get('ask') or 0:.2f})" for l in legs)
+
+
+def margin_fields(doc):
+    return [{"name": "Margin model / Dhan", "value": f"{N.fmt_rs(doc['margin_model'])} / "
+             + (N.fmt_rs(doc["margin_dhan"]) if doc.get("margin_dhan") else
+                ("premium" if doc["sleeve"] == "GAP" else "⚠️ Dhan check unavailable"))},
+            *([{"name": "Margin available", "value": N.fmt_rs(doc["margin_available"])}] if doc.get("margin_available") else [])]
 
 
 # ================================================================ closing positions
@@ -175,10 +280,9 @@ def apply_closes(state, closes, prices, today):
     return remaining
 
 
-# ================================================================ actions
+# ================================================================ actions (run for the active book B)
 def a_renew_token(ctx, event):
-    st = J.get_state({"dhan_token": 1})
-    dh = dhan_for(st)
+    dh = dhan()
     valid, info = dh.token_info()
     if not valid:
         raise DhanAuthError(f"Dhan token invalid, cannot renew ({info}). Generate a new token on web.dhan.co and "
@@ -187,6 +291,16 @@ def a_renew_token(ctx, event):
     ok, validity = dh.token_info(new)
     J.update_state(set_={"dhan_token": new, "token_upd": cal.ist_now().isoformat(), "token_valid": validity})
     return {"renewed": True, "valid_till": validity, "profile_ok": ok}
+
+
+def monthly_plan(dh, state, today, exps):
+    plan = []
+    for e in cal.monthly_expiries(exps):
+        if R.mon_entry_due(cal.dte(e, today), cal.dte(e, cal.prev_trading_day(today))):
+            plan.append(f"monthly straddle entry check at 10:15 (expiry {e}, needs VRP ≥ {R.VRP_MIN:g})")
+    if any(x["sl"] == "MON" and R.mon_exit_due(cal.dte(x["exp"], today)) for x in state.get("open") or []):
+        plan.append("monthly straddle exit at 10:15 (21 DTE)")
+    return plan
 
 
 def plan_for(cyc, vix):
@@ -204,7 +318,7 @@ def plan_for(cyc, vix):
 
 def a_heartbeat(ctx, event):
     st = J.get_state()
-    dh = dhan_for(st)
+    dh = dhan()
     valid, validity = dh.token_info()
     exps, seen = refresh_expiries(dh, st)
     today = ctx["d"]
@@ -212,6 +326,8 @@ def a_heartbeat(ctx, event):
     vix = prev_vix_close(dh, today)
     J.update_state(set_={"exp_seen": seen})
     plan = plan_for(cyc, vix) if cyc else ["no weekly expiry found"]
+    if B.monthly:
+        plan += monthly_plan(dh, st, today, exps)
     N.send("system", "🫀 Heartbeat" + (" — PAUSED" if st.get("paused") else ""),
            "\n".join(f"• {p}" for p in plan) or "No entries scheduled today.",
            N.ORANGE if (st.get("paused") or not valid) else N.BLUE, [
@@ -225,7 +341,7 @@ def a_heartbeat(ctx, event):
 
 def a_entry(ctx, event, dry=False):
     st = J.get_state()
-    dh = dhan_for(st)
+    dh = dhan()
     today = ctx["d"]
     exps, seen = refresh_expiries(dh, st)
     cyc = cal.weekly_cycle(today, exps, seen)
@@ -271,10 +387,10 @@ def a_entry(ctx, event, dry=False):
             elif not lg.get("sid") or lg.get("ltp", 0) <= 0:
                 ok, why = False, f"ATM {K} {typ} has no price in the option chain"
             else:
-                lots, cap = R.gap_lots(eq, lg["ltp"], used)
+                lots, cap = R.gap_lots(eq, lg["ltp"], used, B.f_gap)
                 inputs.update(K=K, typ=typ, lots=lots)
                 if lots < 1:
-                    ok, why = False, f"one lot ({cap:,.0f}) > {R.F_GAP:.0%} of equity or margin cap"
+                    ok, why = False, f"one lot ({cap:,.0f}) > {B.f_gap:.0%} of equity or margin cap"
                 else:
                     qty = lots * costs.LOT
                     fill = R.buy_fill(lg["ltp"])
@@ -295,7 +411,8 @@ def a_entry(ctx, event, dry=False):
                 ok, why = False, f"width {R.rnd(mult * (ce0 + pe0))} > {R.WINDOW_MAX} (research skips)"
             else:
                 ce, pe = chain_leg(chain, s["ce"], "CE"), chain_leg(chain, s["pe"], "PE")
-                lots, cap = R.short_lots(eq, spot, R.W_S2 if sl == "S2" else R.W_E0, cyc["is_expiry"], used)
+                lots, cap = R.short_lots(eq, spot, B.w_s2 if sl == "S2" else B.w_e0, cyc["is_expiry"], used,
+                                         B.margin_base)
                 inputs.update(K=K, S=round(s["S"], 2), w=s["w"], ce_strike=s["ce"], pe_strike=s["pe"], lots=lots,
                               margin_per_lot=round(cap))
                 if not ce.get("sid") or not pe.get("sid") or ce.get("ltp", 0) <= 0 or pe.get("ltp", 0) <= 0:
@@ -304,17 +421,7 @@ def a_entry(ctx, event, dry=False):
                     ok, why = False, f"equity too small: one lot needs {cap:,.0f} margin"
                 if ok and lots >= 1:
                     # real margin check before the (paper) order: Dhan's calculator for exactly these legs
-                    avail = R.MAX_UTIL * eq - used
-                    mdhan = dhan_margin(dh, ce, pe, lots)
-                    if mdhan and mdhan > avail:
-                        fit = int(avail // (mdhan / lots))
-                        mdhan = dhan_margin(dh, ce, pe, fit) if fit >= 1 else mdhan
-                        if fit < 1 or (mdhan and mdhan > avail):
-                            ok, why = False, (f"Dhan margin ₹{mdhan:,.0f} for {lots} lot(s) > available ₹{avail:,.0f} "
-                                              f"({R.MAX_UTIL:.0%} of equity minus open margin)")
-                        else:
-                            why = f"Dhan margin cut {lots} → {fit} lot(s); {why}"
-                            lots = fit
+                    ok, lots, mdhan, avail, why = margin_gate(dh, ce, pe, lots, eq, used, why)
                     inputs.update(margin_dhan=mdhan, margin_available=round(avail), lots=lots,
                                   margin_check="dhan" if mdhan else "unavailable (model used)")
                 if ok and lots >= 1:
@@ -364,22 +471,116 @@ def a_entry(ctx, event, dry=False):
             {"name": "Target" if doc["sleeve"] == "GAP" else "Stop",
              "value": f"≥ {doc['target']:.2f}" if doc["sleeve"] == "GAP" else f"CE+PE ≥ {doc['stop_sum']:.2f}"},
             {"name": "Entry charges", "value": N.fmt_rs(sum(doc["ch_in"].values()))},
-            {"name": "Margin model / Dhan", "value": f"{N.fmt_rs(doc['margin_model'])} / "
-             + (N.fmt_rs(doc["margin_dhan"]) if doc.get("margin_dhan") else
-                ("premium" if doc["sleeve"] == "GAP" else "⚠️ Dhan check unavailable"))},
-            *([{"name": "Margin available", "value": N.fmt_rs(doc["margin_available"])}] if doc.get("margin_available") else []),
+            *margin_fields(doc),
             {"name": "Trade", "value": doc["_id"], "inline": False}])
     return out
 
 
+def a_monthly(ctx, event, dry=False):
+    """Monthly 45->21 DTE short straddle (books with the monthly sleeve): exits first, then the entry check."""
+    if not B.monthly:
+        return {"skipped": "no monthly sleeve in this book"}
+    st = J.get_state()
+    dh = dhan()
+    today = ctx["d"]
+    exps, seen = refresh_expiries(dh, st)
+    mon = cal.monthly_expiries(exps)
+    out = {"monthly_expiries": mon[:4], "decisions": [], "exits": []}
+    opened = list(st.get("open") or [])
+    due = [x for x in opened if x["sl"] == "MON" and R.mon_exit_due(cal.dte(x["exp"], today))]
+    if due and not dry:
+        prices = dh.ltp([l[0] for x in due for l in x["legs"]])
+        missing = [x["tid"] for x in due if any(not prices.get(str(l[0])) for l in x["legs"])]
+        if missing:
+            raise RuntimeError(f"no LTP for the monthly straddle legs of {missing}; exit not booked")
+        opened = apply_closes(st, [(x, "time (21 DTE)", False, None) for x in due], prices, today)
+        out["exits"] = [x["tid"] for x in due]
+    prev = cal.prev_trading_day(today)
+    for e in mon:
+        dte_t, dte_p = cal.dte(e, today), cal.dte(e, prev)
+        if not R.mon_entry_due(dte_t, dte_p):
+            continue
+        key = f"MON|{e}"
+        if J.db().trades.find_one({"src": "paper", "key": key}, {"_id": 1}):
+            continue
+        q = dh.ltp([l[0] for x in opened for l in x["legs"]])
+        eq = equity(st) + unrealised(opened, q)
+        used = sum(booked_margin(x) for x in opened)
+        vix_c = dh.daily_closes(VIX_ID, cal.d(today), days=10)
+        nifty_c = dh.daily_closes(NIFTY_ID, cal.d(today), days=45)
+        vix_prev = vix_c[-1][1] if vix_c else None
+        v, rv = R.vrp(vix_prev, [c for _, c in nifty_c])
+        inputs = {"expiry": e, "dte": dte_t, "equity": round(eq), "margin_used": round(used), "vix_prev_close": vix_prev,
+                  "rv20": round(rv, 3) if rv else None, "vrp": round(v, 3) if v is not None else None}
+        doc = None
+        if v is None:
+            dec = ("skip", "VRP unavailable (daily history missing)")
+        elif v < R.VRP_MIN:
+            dec = ("skip", f"VRP {v:.2f} < {R.VRP_MIN:g} (VIX {vix_prev:.2f} − RV20 {rv:.2f})")
+        elif st.get("paused"):
+            dec = ("skip", "bot paused")
+        else:
+            spot_ul, chain = dh.option_chain(e)
+            spot = q.get("spot") or spot_ul
+            if not spot or not chain:
+                raise RuntimeError(f"Dhan returned no price / option chain for monthly expiry {e}")
+            simple = {k: (v_["ce"]["ltp"], v_["pe"]["ltp"]) for k, v_ in chain.items()
+                      if v_["ce"].get("ltp", 0) > 0 and v_["pe"].get("ltp", 0) > 0}
+            K, F = R.mon_strike(simple, spot)
+            lots, cap = R.mon_lots(eq, spot, used, B.margin_base, B.w_mon)
+            inputs.update(spot=spot, forward=round(F, 2) if F else None, K=K, lots=lots, margin_per_lot=round(cap))
+            if K is None:
+                dec = ("skip", "no strike with both CE and PE prices")
+            elif lots < 1:
+                dec = ("skip", f"equity too small: one lot needs {cap:,.0f} margin")
+            else:
+                ce, pe = chain_leg(chain, K, "CE"), chain_leg(chain, K, "PE")
+                ok, lots, mdhan, avail, why = margin_gate(dh, ce, pe, lots, eq, used, f"VRP {v:.2f}")
+                inputs.update(margin_dhan=mdhan, margin_available=round(avail), lots=lots,
+                              margin_check="dhan" if mdhan else "unavailable (model used)")
+                if not ok:
+                    dec = ("skip", why)
+                else:
+                    qty = lots * costs.LOT
+                    legs = [leg_doc("CE", K, ce, -1, qty, R.sell_fill(ce["ltp"]), e),
+                            leg_doc("PE", K, pe, -1, qty, R.sell_fill(pe["ltp"]), e)]
+                    tid = f"P-MON-{today}"
+                    doc = {"_id": tid, "src": "paper", "status": "open", "sleeve": "MON", "key": key, "ckey": key,
+                           "expiry": e, "entry_d": today, "entry_ts": dt.datetime.now(dt.timezone.utc), "legs": legs,
+                           "lots": lots, "qty": qty, "credit": round((legs[0]["fill"] + legs[1]["fill"]) * qty, 2),
+                           "px_in": round(legs[0]["fill"] + legs[1]["fill"], 2),
+                           "exit_plan": f"first session with DTE ≤ {R.MON_EXIT_DTE} (10:15)",
+                           "ch_in": entry_charges(legs, today), "eq_before": round(eq),
+                           "margin_model": round(cap * lots), "margin_dhan": mdhan, "margin_available": round(avail),
+                           "in": inputs}
+                    dec = ("enter", f"sell {lots} × {K} straddle (expiry {e}, {dte_t} DTE), margin Dhan "
+                                    f"{'₹' + format(mdhan, ',') if mdhan else 'unavailable'} of ₹{avail:,.0f}; {why}")
+        out["decisions"].append({"sleeve": "MON", "outcome": dec[0], "why": dec[1], "in": inputs})
+        if dry:
+            continue
+        J.decision(ctx, "MON", dec[0], dec[1], inputs)
+        N.send("signals", f"Monthly straddle {dec[0].upper()}", dec[1], N.BLUE if dec[0] == "enter" else N.GREY)
+        if doc:
+            J.insert_trade(ctx, doc)
+            J.update_state(set_={"exp_seen": seen}, extra={"$push": {"open": compact(
+                doc["_id"], "MON", doc["legs"], {"exp": e, "xd": None, "mg": doc["margin_model"], "mgd": doc["margin_dhan"]})}})
+            N.send("trades", "Entry MON straddle", fmt_legs(doc["legs"]), N.PURPLE, [
+                {"name": "Credit", "value": N.fmt_rs(doc["credit"])},
+                {"name": "Expiry / DTE", "value": f"{e} / {dte_t}"},
+                {"name": "VRP", "value": f"{v:.2f} (VIX {vix_prev:.2f} − RV20 {rv:.2f})"},
+                *margin_fields(doc),
+                {"name": "Trade", "value": doc["_id"], "inline": False}])
+    return out
+
+
 def a_tick(ctx, event):
-    st = J.db().state.find_one({"_id": J.STATE_ID}, {"open": 1, "flatten": 1, "dhan_token": 1, "realised": 1, "running": 1}) or {}
+    st = J.db().state.find_one({"_id": J.STATE_ID}, {"open": 1, "flatten": 1, "realised": 1, "running": 1}) or {}
     opened = st.get("open") or []
     if not opened and not st.get("flatten"):
         return {"open": 0}
     today = ctx["d"]
     hhmm = now_ist(event).strftime("%H:%M")
-    prices = dhan_for(st).ltp([l[0] for x in opened for l in x["legs"]])
+    prices = dhan().ltp([l[0] for x in opened for l in x["legs"]])
     closes = []
     if st.get("flatten"):
         closes = [(x, "flatten", True, None) for x in opened]
@@ -410,7 +611,7 @@ def a_tick(ctx, event):
 def a_eod(ctx, event):
     st = J.get_state()
     today = ctx["d"]
-    dh = dhan_for(st)
+    dh = dhan()
     opened = st.get("open") or []
     prices = dh.ltp([l[0] for x in opened for l in x["legs"]]) if opened else dh.ltp([])
     unreal = unrealised(opened, prices)
@@ -423,7 +624,7 @@ def a_eod(ctx, event):
         st["running"] = float(st.get("running") or 0) + R.MONTHLY_RUNNING_COSTS
     eq = equity(st)
     mark = eq + unreal
-    peak = max(float(st.get("peak") or CAPITAL), mark)
+    peak = max(float(st.get("peak") or B.capital), mark)
     dd = mark / peak - 1
     margin_dhan = dh.margin([{"sid": l[0], "side": l[1], "qty": l[2], "px": prices.get(str(l[0])) or l[3]}
                              for x in opened for l in x["legs"]]) if opened else None
@@ -458,7 +659,7 @@ def a_eod(ctx, event):
     errs = sum(day_doc["errors"].values())
     if errs:
         fields.append({"name": "Errors today", "value": str(errs)})
-    N.send("daily_report", f"📊 Daily report {today}", "", N.GREEN if day_doc["realised_today"] >= 0 else N.RED, fields)
+    N.send("daily_report", f"📊 {B.label} daily report {today}", "", N.GREEN if day_doc["realised_today"] >= 0 else N.RED, fields)
     if cal.next_trading_day(today).isocalendar()[1] != cal.d(today).isocalendar()[1]:
         weekly_summary(today)
     return {"equity": eq, "mark": mark, "dd": dd}
@@ -479,30 +680,34 @@ def weekly_summary(today):
 
 def a_status(ctx, event):
     st = J.get_state()
-    valid, validity = dhan_for(st).token_info()
-    info = {"paused": st.get("paused"), "flatten": st.get("flatten"), "capital": CAPITAL, "equity": equity(st),
-            "realised": st.get("realised"), "running": st.get("running"), "open": [x["tid"] for x in st.get("open") or []],
-            "token_valid": valid, "token_validity": validity, "last_eod": st.get("last_eod"), "strategy_version": SV}
-    N.send("system", "ℹ️ Status", "", N.BLUE, [{"name": k, "value": str(v)[:1000]} for k, v in info.items()])
+    valid, validity = dhan().token_info()
+    info = {"book": B.label, "paused": st.get("paused"), "flatten": st.get("flatten"), "capital": B.capital,
+            "equity": equity(st), "realised": st.get("realised"), "running": st.get("running"),
+            "open": [x["tid"] for x in st.get("open") or []], "token_valid": valid, "token_validity": validity,
+            "last_eod": st.get("last_eod"), "strategy_version": SV}
+    N.send("system", f"ℹ️ {B.label} status", "", N.BLUE, [{"name": k, "value": str(v)[:1000]} for k, v in info.items()])
     return info
 
 
 def a_test(ctx, event):
-    """Dry run: Dhan data + rules for today's 09:31 decisions. Writes nothing to trades/state."""
+    """Dry run: Dhan data + rules for today's 09:31 (and 10:15 monthly) decisions. Writes nothing to trades/state."""
     res = a_entry(ctx, event, dry=True)
-    lines = [f"{d['sleeve']}: {d['outcome']} — {d['why']}" for d in res["decisions"]]
-    N.send("system", "🧪 TEST (dry run, nothing recorded)", "\n".join(lines)[:3900], N.GREY,
+    if B.monthly:
+        res["monthly"] = a_monthly(ctx, event, dry=True)
+    lines = [f"{d['sleeve']}: {d['outcome']} — {d['why']}" for d in res["decisions"] + res.get("monthly", {}).get("decisions", [])]
+    N.send("system", f"🧪 {B.label} TEST (dry run, nothing recorded)", "\n".join(lines)[:3900], N.GREY,
            [{"name": "VIX prev close", "value": str(res.get("vix_prev"))},
-            {"name": "Cycle", "value": f"day {res['cycle']['i'] + 1}/{res['cycle']['n']} → {res['cycle']['next_exp']}"}])
+            {"name": "Cycle", "value": f"day {res['cycle']['i'] + 1}/{res['cycle']['n']} → {res['cycle']['next_exp']}"},
+            {"name": "Capital", "value": N.fmt_rs(B.capital)}])
     return res
 
 
 def a_init(ctx, event):
     J.ensure_indexes()
     st = J.get_state()
-    if not st.get("dhan_token") and env("DHAN_ACCESS_TOKEN"):
+    if B.key == "s6" and not st.get("dhan_token") and env("DHAN_ACCESS_TOKEN"):
         J.update_state(set_={"dhan_token": env("DHAN_ACCESS_TOKEN"), "token_upd": cal.ist_now().isoformat()})
-    return {"indexes": "ok", "state": "ok", "capital": CAPITAL}
+    return {"indexes": "ok", "state": "ok", "capital": B.capital}
 
 
 def a_set_flag(flag, value, label):
@@ -519,7 +724,7 @@ def a_set_token(ctx, event):
     if not valid:
         raise DhanAuthError(f"SET_TOKEN: token rejected by Dhan ({validity})")
     J.update_state(set_={"dhan_token": tok, "token_upd": cal.ist_now().isoformat(), "token_valid": validity})
-    N.send("system", "🔑 Dhan token updated", f"valid till {validity}", N.GREEN)
+    N.send("system", "🔑 Dhan token updated", f"valid till {validity} (shared by all books)", N.GREEN)
     return {"valid_till": validity}
 
 
@@ -533,18 +738,37 @@ def a_clear_trade(ctx, event):
 
 
 HANDLERS = {
-    "RENEW_TOKEN": a_renew_token, "HEARTBEAT": a_heartbeat, "ENTRY_0931": a_entry, "TICK": a_tick, "EOD": a_eod,
-    "STATUS": a_status, "TEST": a_test, "INIT": a_init,
+    "RENEW_TOKEN": a_renew_token, "HEARTBEAT": a_heartbeat, "ENTRY_0931": a_entry, "MONTHLY_1015": a_monthly,
+    "TICK": a_tick, "EOD": a_eod, "STATUS": a_status, "TEST": a_test, "INIT": a_init,
     "PAUSE": a_set_flag("paused", True, "⏸️ Paused: no new entries"),
     "RESUME": a_set_flag("paused", False, "▶️ Resumed"),
     "FLATTEN": a_set_flag("flatten", True, "🧯 Flatten requested (next TICK)"),
     "SET_TOKEN": a_set_token, "CLEAR_TRADE": a_clear_trade,
 }
+PRIMARY_ONLY = {"RENEW_TOKEN", "SET_TOKEN"}               # the shared Dhan token lives in the primary book
 NO_LEASE = {"TICK", "STATUS", "TEST", "PAUSE", "RESUME", "FLATTEN"}
 
 
 # ================================================================ entry point
+def _notify_error(ctx, action, e, today):
+    tb = traceback.format_exc()
+    print(tb)
+    first = True
+    try:
+        first = J.record_error(ctx, action, type(e).__name__, str(e), tb)
+        if action != "TICK":
+            J.run_summary(ctx, action, "error", 0, {"error": str(e)[:300]})
+    except Exception as je:
+        print(f"journal unavailable while recording the error: {je}")
+    if first:
+        hint = ("\nRenew: `python strategy6_bot/invoke.py SET_TOKEN --token <new token>`"
+                if isinstance(e, DhanAuthError) else "")
+        N.send("errors", f"🚨 {action} failed: {type(e).__name__}", f"{str(e)[:1500]}{hint}\n```{tb[-1800:]}```",
+               N.RED, [{"name": "Run", "value": ctx["run"]}, {"name": "Date", "value": today}])
+
+
 def lambda_handler(event, context=None):
+    global MKT
     event = event or {}
     action = (event.get("action") or "STATUS").upper()
     if action not in HANDLERS:
@@ -552,40 +776,62 @@ def lambda_handler(event, context=None):
     today = cal.d(event["date"]).isoformat() if event.get("date") else cal.ist_now().date().isoformat()
     if action in SCHEDULED and not cal.is_trading_day(today):
         return {"skipped": f"{today} is not a trading day"}
+    all_books = books()
+    primary = all_books[0]
+    run_books = [primary] if action in PRIMARY_ONLY else [b for b in all_books if b.key == event["book"]] \
+        if event.get("book") else all_books
+    if not run_books:
+        return {"error": f"unknown book {event.get('book')}", "books": [b.key for b in all_books]}
     ctx = {"run": uuid.uuid4().hex[:10], "d": today, "sv": SV, "action": action}
     t0 = time.time()
     leased = False
     N.clear()                      # a warm container must not carry another run's messages
+    activate(primary)
     try:
         if action not in NO_LEASE:
             leased = J.acquire_lease(ctx["run"])
             if not leased:
                 print(f"{action}: another run holds the lease; exiting quietly")
                 return {"skipped": "lease held"}
-        result = HANDLERS[action](ctx, event)
-        if action != "TICK":
-            J.run_summary(ctx, action, "ok", int((time.time() - t0) * 1000))
-        return json.loads(json.dumps(result, default=str))
+        token = (J.db().state.find_one({"_id": J.STATE_ID}, {"dhan_token": 1}) or {}).get("dhan_token") \
+            or env("DHAN_ACCESS_TOKEN", "")
+        MKT = Market(Dhan(env("DHAN_CLIENT_ID", ""), token))
+        if action in ("TICK", "EOD"):              # one LTP call for every book's open legs
+            ids = []
+            for b in run_books:
+                J.use(b.db)
+                st = J.db().state.find_one({"_id": J.STATE_ID}, {"open": 1}) or {}
+                ids += [l[0] for x in st.get("open") or [] for l in x["legs"]]
+            if ids or action == "EOD":
+                MKT.prefetch(ids)
+        results, failed = {}, []
+        for b in run_books:
+            if action == "MONTHLY_1015" and not b.monthly:
+                continue
+            activate(b)
+            try:
+                results[b.key] = HANDLERS[action](ctx, event)
+                if action != "TICK":
+                    J.run_summary(ctx, action, "ok", int((time.time() - t0) * 1000))
+            except Exception as e:                   # this book fails alone; the others still run
+                _notify_error(ctx, action, e, today)
+                failed.append((b.key, e))
+        if failed:
+            err = RuntimeError("; ".join(f"{k}: {type(e).__name__}: {e}" for k, e in failed)[:1000])
+            err.notified = True
+            raise err from failed[0][1]
+        res = results[run_books[0].key] if len(run_books) == 1 else results    # one book: its own result
+        return json.loads(json.dumps(res, default=str))
     except Exception as e:
-        tb = traceback.format_exc()
-        print(tb)
-        first = True
-        try:
-            first = J.record_error(ctx, action, type(e).__name__, str(e), tb)
-            if action != "TICK":
-                J.run_summary(ctx, action, "error", int((time.time() - t0) * 1000), {"error": str(e)[:300]})
-        except Exception as je:
-            print(f"journal unavailable while recording the error: {je}")
-        if first:
-            hint = ("\nRenew: `python strategy6_bot/invoke.py SET_TOKEN --token <new token>`"
-                    if isinstance(e, DhanAuthError) else "")
-            N.send("errors", f"🚨 {action} failed: {type(e).__name__}", f"{str(e)[:1500]}{hint}\n```{tb[-1800:]}```",
-                   N.RED, [{"name": "Run", "value": ctx["run"]}, {"name": "Date", "value": today}])
+        if not getattr(e, "notified", False):        # failed before the per-book loop (lease, token, shared prices)
+            activate(primary)
+            _notify_error(ctx, action, e, today)
         raise
     finally:
         if leased:
             try:
+                activate(primary)
                 J.release_lease(ctx["run"])
             except Exception:
                 pass
-        N.flush()                  # everything from this run goes out as ONE Discord message
+        N.flush()                  # one Discord message per book channel for this run

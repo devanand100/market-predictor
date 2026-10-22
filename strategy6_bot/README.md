@@ -5,6 +5,19 @@ It runs on AWS Lambda with EventBridge Scheduler, journals everything to MongoDB
 posts **one Discord message per run** to `#strategy6-paper`. It is fully separate from `three_sleeve_bot/`:
 own function, schedules, alarms, database, channel and capital.
 
+## Two books in one Lambda (since 2026-10-22)
+| Book | Strategy | Capital (`.env`) | MongoDB | Discord |
+|---|---|---|---|---|
+| s6 | Strategy 6: S2 / E0 / GAP at 0.55 / 0.55 / 0.05, 9% margin model | `S6_CAPITAL` (₹5L) | `strategy6` | `#strategy6-paper` |
+| s7 | Strategy 7: Strategy 6 at 0.45 / 0.45 / 0.05 + monthly straddle (VRP ≥ 2, 20%), 11.6% margin model | `S7_CAPITAL` (₹15L) | `strategy7` | `#strategy7-paper` |
+
+Each run serves both books with one Dhan token (renewed once, kept in `strategy6.state`) and one set of market-data
+calls: one option chain, one LTP call per tick for both books' legs, and so on. The books never compete for Dhan's
+rate limits. A failure in one book is journalled and posted in that book's channel only; the other book still runs, and
+the run then fails so the CloudWatch alarm fires. `invoke.py ... --book s7` runs one book only (STATUS, PAUSE, TEST,
+CLEAR_TRADE...). MONTHLY_1015 (10:15) runs for the Strategy 7 book only. Strategy 7's monthly data is thin
+(`docs/STRATEGY_7_REALTRADE.md`), so this book is paper-only until its live record exists.
+
 ## Rules (`rules.py`, parity-tested against `research_realtrade.py`)
 "VIX" is the previous session's India VIX close.
 
@@ -64,7 +77,7 @@ python strategy6_bot/invoke.py PAUSE | RESUME         # stop / allow new entries
 python strategy6_bot/invoke.py FLATTEN                # next TICK closes everything
 python strategy6_bot/invoke.py SET_TOKEN --token X    # new Dhan token if renewal failed
 python strategy6_bot/invoke.py TEST --local           # in-process against strategy6_dev
-python -m pytest strategy6_bot/tests -q               # 150 tests (parity tests need the engine cache)
+python -m pytest strategy6_bot/tests -q               # 160 tests (parity tests need the engine cache)
 python strategy6_bot/deploy.py --remove               # delete function, schedules, alarms, roles (Mongo kept)
 ```
 
