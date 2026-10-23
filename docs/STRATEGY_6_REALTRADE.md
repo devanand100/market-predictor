@@ -127,3 +127,28 @@ and the harsh synthetic case with IV ×0.85 above VIX 21.
 Each cell is CAGR / max drawdown on the trade-close curve. The drawdown −15% rule is the only one that never fires on
 real data and caps both COVID drawdowns near −19%, at a cost of 0.5–3.3 CAGR points in those years. Profit-factor rules
 trigger on normal bad patches or not at all. The bot reports it **notify only**: paper keeps trading.
+
+## 9. Sizing at Dhan's real margin (2026-10-23, `research_realtrade_real_margin.py`)
+The results above size every strangle on the 9% margin model. Dhan's calculator asks ~11.6% of notional
+(₹1.70–1.72L per lot at Nifty ~22,700, lot 65), plus 2% ELM on expiry day. The paper bot sizes lots on the model and
+cuts them only when Dhan's figure breaks the 90% cap, so at ₹5L S2 takes 2 lots (₹3.40L at Dhan) and E0 can find no
+room on expiry day (first seen on the 2026-10-23 entry). The replay was rerun with Dhan-level margin booked:
+
+| Sizing (₹5L, weights 0.55 / 0.55 / 0.05) | CAGR | Max DD | Trade PF | 2024+ CAGR | E0 trades |
+|---|---|---|---|---|---|
+| 9% model (the backtest above) | 38.6% | −13.3% | 1.76 | 27.6% | 135 |
+| **bot: model lots, cut at the 90% cap on Dhan margin** | **34.8%** | **−13.3%** | 1.77 | **25.6%** | 134 |
+| lots sized on Dhan margin (weight × equity ÷ Dhan per lot, min 1) | 31.0% | −13.2% | 1.76 | 23.7% | 135 |
+
+Sizing on Dhan's margin halves S2 in most weeks and gives up more than the rare skipped E0 is worth, at no drawdown
+benefit, so it was rejected; the bot keeps model sizing. The research figure at ₹10L drops from 38.7% to 35.5%
+(0.45 / 0.45 weights). Capital sweep with the bot's weights and sizing:
+
+| Capital | ₹3L | ₹4L | ₹5L | ₹7.5L | ₹10L | ₹15L | ₹20L |
+|---|---|---|---|---|---|---|---|
+| CAGR / max DD | 28.7% / −14.7% | 31.1% / −13.1% | 34.8% / −13.3% | 36.2% / −13.4% | 38.0% / −13.4% | 39.3% / −13.5% | 39.7% / −13.6% |
+| 2024+ CAGR | 23.9% | 25.6% | 25.6% | 26.8% | 27.3% | 27.5% | 28.0% |
+| E0 trades skipped | 22 | 27 | 1 | 0 | 0 | 0 | 0 |
+
+₹5L is where the expiry-day crowd-out stops mattering; above it more capital adds 1–2 points a year (finer lots).
+Expect about 25% a year at ₹5L on recent data, not the 38.7% headline.

@@ -57,6 +57,20 @@ its weekly sleeves (the same as Strategy 6 at 0.45 / 0.45 / 0.05), −16% keeps 
 harsh 33.5%). −17% and −18% let the base case reach −21.7%, and −20% reaches −24.7%. Restart is unchanged: last
 20 trades PF ≥ 1.3.
 
+**Confirmed on the full Strategy 7 2020 test** (`research_synthetic_s7.py`, monthly straddle included, chained to real
+2021–26, restart at 20-trade PF ≥ 1.3):
+
+| Trigger | COVID base | COVID harsh (IV ×0.85) |
+|---|---|---|
+| none | 39.5% / −17.0% | 32.3% / −28.2% |
+| −15% or −16% | 38.5% / −17.0% | 34.3% / −16.1% |
+| −17% | 39.5% / −17.0% | 33.9% / −17.7% |
+| −18% | 39.5% / −17.0% | 33.4% / −19.7% |
+| −20% | 39.5% / −17.0% | 31.3% / −22.3% |
+
+Each cell is CAGR / max drawdown on the trade-close curve. On real 2021–26 data no trigger fires. −16% matches −15%
+in both crash cases and keeps 1 point of headroom over the real worst of −14.97%.
+
 ## To deploy later
 Add a MON sleeve to `strategy6_bot`. `three_sleeve_bot/lambda_function.py` already has `MONTHLY_1015` (VRP from
 Dhan daily closes, monthly expiry chain, strike nearest the forward) and the rules in `three_sleeve_bot/rules.py`

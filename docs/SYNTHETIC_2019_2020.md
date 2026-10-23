@@ -66,3 +66,44 @@ come from the March-May 2020 high-VIX weeks.
   Use the slippage x3 + margin 15% rows as the realistic floor: ~15% CAGR, ~-15% DD.
 - Spot paths and VIX levels are real; only option prices are modelled. Treat the result as "survives
   2020, worst DD about -22 to -32%", not as a CAGR to compare with the real-price backtests.
+
+## Strategy 7 (Strategy 6 + monthly straddle) on 2019-11 .. 2020-12
+Script: `research_synthetic_s7.py` (`calibrate`, `check`, `stress`). Same weekly synthetic days, plus synthetic
+MON trades from a separate monthly IV/VIX surface (calendar DTE x VIX x z) fitted on the real 2021-23 hourly
+monthly chains. ATM monthly IV is 0.85-0.96 x VIX. Settings as `final_realtrade_s7.py`: Rs 15L, margin 11.6%,
+MON 20% at VRP >= 2, bot running costs.
+
+**MON check on 2021-26 (same 68 expiries, 100% same entry dates).** The synthetic credit is 0.95-0.98 of real.
+Where the real exit had traded prices for both legs, the exit cost matches (median 0.996). Strategy 7's
+real-only MON prices a leg with no quote (strike > ~450 pts from spot at exit, 25 of 68 trades) at its last
+price moved by intrinsic, a median 1.23 x fair value. VRP >= 2 trades, Rs per lot:
+
+| fair synthetic | research (parity) | real-only (S7) | synthetic + 1.234 stale haircut (used) |
+|---|---|---|---|
+| 256,740 | 298,911 | 191,611 | 90,480 |
+
+The haircut version is the more pessimistic one. S7 on 2021-26 gives 33.4% / -16.0% / PF 1.57 synthetic,
+against 39.1% / -15.0% / 1.80 real.
+
+**Results (Rs 15L)**
+
+| case | CAGR | max DD | PF | 2020 |
+|---|---|---|---|---|
+| base (MON with stale haircut) | 38.4 | -20.9 (2020-01-30 to 03-24, recovered 05-21) | 1.67 | +34.2 |
+| without MON (S6 at 15L, 11.6% margin) | 37.3 | -17.0 | 1.78 | +33.1 |
+| MON fair exits | 52.7 | -20.9 | 2.00 | +49.9 |
+| slippage x2 / x3 | 25.9 / 19.7 | -18.6 / -19.5 | 1.44 / 1.33 | +20.9 / +14.3 |
+| margin 15% | 31.1 | -16.1 | 1.72 | +26.8 |
+| start 10L | 34.5 | -18.1 | 1.62 | +30.3 |
+| IV trend above VIX 21 | 69.6 | -20.1 | 2.23 | +68.5 |
+| IV x0.85 when VIX > 21 | 0.1 | -26.0 | 1.01 | -6.5 |
+| slippage x3 + margin 15% | 17.9 | -17.4 | 1.39 | +12.8 |
+| IV x0.85 + slippage x3 + margin 15% | -2.8 | -22.7 | 0.95 | -9.1 |
+
+Chained (synthetic 2019-20, then real 2021+): 39.6% CAGR, -20.9% DD, PF 1.80; every calendar year positive.
+
+MON in 2020: the VRP filter skipped the Feb-10 entry (VRP -2), which would have lost Rs 38.8k per lot in the crash.
+It entered on 2020-03-16 at a previous-session VIX of 51 (+Rs 27k per lot). Its 7 trades had PF 1.15. The losses came after the crash
+(Jun-Jul and Nov-Dec 2020 rallies: worst -Rs 86k on 3 lots). Monthly returns: Mar 2020 -9.6%, Jun 2020 -5.7%;
+all other months positive. In 2020 MON adds ~1 CAGR point and ~4 DD points over Strategy 6 at the same capital,
+so the crash does not make the case for it; its case rests on 2021-26.
