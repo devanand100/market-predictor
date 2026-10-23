@@ -1,2 +1,0 @@
-pymongo>=4.8
-holidays>=0.50

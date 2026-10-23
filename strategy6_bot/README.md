@@ -2,7 +2,7 @@
 
 Paper-trades Strategy 6 (`../docs/STRATEGY_6_REALTRADE.md`) live on Dhan market data. **No orders are placed.**
 It runs on AWS Lambda with EventBridge Scheduler, journals everything to MongoDB (database `strategy6`) and
-posts **one Discord message per run** to `#strategy6-paper`. It is fully separate from `three_sleeve_bot/`:
+posts **one Discord message per run** to `#strategy6-paper`. It replaced `three_sleeve_bot/` (removed; `docs/THREE_SLEEVE_BOT.md`):
 own function, schedules, alarms, database, channel and capital.
 
 ## Two books in one Lambda (since 2026-10-22)
@@ -102,4 +102,4 @@ python strategy6_bot/deploy.py --remove               # delete function, schedul
 ## Notes
 - **Dhan token:** this bot renews and keeps its own token in Mongo `strategy6.state`. If another bot renews the same Dhan token, one of them ends up with an invalid token, so run only one bot per Dhan account.
 - **Running costs:** ₹590/month (Dhan Data API) are charged to paper equity. Lambda, MongoDB free tier and Discord cost nothing. The research used ₹1,990 (VPS setup).
-- **Not built yet:** next-morning reconciliation against the replay (`three_sleeve_bot/reconcile.py` has the pattern) and live order placement.
+- **Not built yet:** next-morning reconciliation against the replay (the removed `three_sleeve_bot/reconcile.py` at commit `46a7036` has the pattern) and live order placement.

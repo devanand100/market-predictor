@@ -91,7 +91,7 @@ live results nearer the neighbourhood than the headline.
 
 1. Paper trade it for at least 8 weeks and compare fills with the replay.
 2. Rerun Strategies 1–5 on `research_realtrade.py` to measure how much intrinsic pricing inflated each.
-3. Add Strategy 6 to the report and to a bot (the `three_sleeve_bot/` structure fits: three sleeves, a weekly calendar and a VIX gate).
+3. Add Strategy 6 to the report and to a bot (done 2026-10-22: `strategy6_bot/`, built from the former `three_sleeve_bot/`).
 
 ## 7. Crowded-seller measures (2026-10-23, `research_realtrade_crowding.py`)
 Seven measures known before the 09:30 entry were tested as "skip when sellers look crowded" filters on S2 and E0. The

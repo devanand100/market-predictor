@@ -1,5 +1,10 @@
 # Plan: trade-journal dashboard served from Lambda (to build later)
 
+> **Removed 2026-10-23.** The bot was taken off AWS on 2026-10-22 (replaced by `strategy6_bot/`) and its code was
+> deleted from the repo. This dashboard plan was never built; it is kept for reference. The code is in git history:
+> `git show 46a7036:three_sleeve_bot/<file>` or `git checkout 46a7036 -- three_sleeve_bot`. Real-price results:
+> `STRATEGY_5_REAL_CHECK.md`.
+
 Goal: the same dashboard as the Claude artifact "Strategy 5 trade journal"
 (https://claude.ai/artifact/FSCNSS5GuaGhMdPNEsxM73), but reading the bot's MongoDB journal, so paper trades can be
 viewed (and compared with the backtest) in a browser.

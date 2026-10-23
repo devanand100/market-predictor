@@ -1,5 +1,10 @@
 # three_sleeve_bot: Strategy 5 paper trader
 
+> **Removed 2026-10-23.** The bot was taken off AWS on 2026-10-22 (replaced by `strategy6_bot/`) and its code was
+> deleted from the repo. This is its last README, kept for reference. The code is in git history:
+> `git show 46a7036:three_sleeve_bot/<file>` or `git checkout 46a7036 -- three_sleeve_bot`. Real-price results:
+> `STRATEGY_5_REAL_CHECK.md`.
+
 Paper-trades Strategy 5 (`docs/PORTFOLIO_STRATEGY.md`) live: weekly staggered strangle (L2) + gap buy (VIX ≤ 15)
 + monthly straddle (VRP ≥ 2). **No orders are placed.** Runs on AWS Lambda with Dhan market data, journals
 everything to MongoDB and posts **one Discord message per run** to a single channel.

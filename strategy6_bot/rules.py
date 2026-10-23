@@ -163,7 +163,7 @@ def gap_target_hit(target, ltp):
 
 
 # ---------------------------------------------------------------- monthly straddle (Strategy 7 book)
-# Same rules as three_sleeve_bot/rules.py (parity-tested there against research_monthly_straddle.py).
+# Same rules as the former three_sleeve_bot/rules.py (parity-tested there against research_monthly_straddle.py).
 def rv20(closes):
     """Annualised % stdev of the last 20 daily log returns (needs >= 21 closes, oldest first)."""
     c = closes[-21:]

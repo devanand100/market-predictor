@@ -27,5 +27,3 @@ secrets*.json
 # Separate git repo (alert bot)
 bear_call_bot/
 
-# Generated dashboard preview (three_sleeve_bot/dashboard/build_preview.py)
-three_sleeve_bot/dashboard/preview.html

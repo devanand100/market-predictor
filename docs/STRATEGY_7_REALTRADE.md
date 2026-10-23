@@ -72,7 +72,7 @@ Each cell is CAGR / max drawdown on the trade-close curve. On real 2021–26 dat
 in both crash cases and keeps 1 point of headroom over the real worst of −14.97%.
 
 ## To deploy later
-Add a MON sleeve to `strategy6_bot`. `three_sleeve_bot/lambda_function.py` already has `MONTHLY_1015` (VRP from
-Dhan daily closes, monthly expiry chain, strike nearest the forward) and the rules in `three_sleeve_bot/rules.py`
-(`mon_entry_due`, `mon_exit_due`, `mon_strike`). Add the Dhan margin check before the MON entry, a parity test against
+Add a MON sleeve to `strategy6_bot` (done 2026-10-22 as the Strategy 7 book: `MONTHLY_1015`, VRP from Dhan daily
+closes, monthly expiry chain, strike nearest the forward; rules `mon_entry_due`, `mon_exit_due`, `mon_strike` ported
+from the former `three_sleeve_bot/rules.py`). Add the Dhan margin check before the MON entry, a parity test against
 `research_realtrade_s7.MonthlyReal`, and set the capital to ₹10L or more.

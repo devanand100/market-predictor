@@ -36,7 +36,7 @@ P&L share at Rs 10L: gap buy 46%, L2 30%, monthly 24%.
 
 **Live sizing at today's index level:** at Nifty ~25,000 one strangle lot needs ~Rs 1.47L margin,
 so the 30% L2 sleeve needs ~Rs 14.7L to reach the 3-lot minimum. The backtest averaged 4 lots at
-Rs 10L only because Nifty was 15–18k in 2021–23. The paper bot (`three_sleeve_bot/`) runs Rs 15L.
+Rs 10L only because Nifty was 15–18k in 2021–23. The paper bot (`three_sleeve_bot/`, removed 2026-10-23, see `THREE_SLEEVE_BOT.md`) ran Rs 15L.
 Monte Carlo (fractional weekly returns, 5 years): median CAGR 32.7%, median max DD −19.4%,
 1-in-20 max DD −31.9%.
 

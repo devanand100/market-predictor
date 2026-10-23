@@ -1,5 +1,5 @@
 """
-One-command deploy / update of the Strategy 6 PAPER bot (adapted from three_sleeve_bot/deploy.py).
+One-command deploy / update of the Strategy 6 PAPER bot (adapted from the former three_sleeve_bot/deploy.py).
 
   python strategy6_bot/deploy.py            # create or update everything (idempotent), then INIT (indexes + token seed)
   python strategy6_bot/deploy.py --test     # ...then a TEST dry run (Dhan + rules + one Discord message)
