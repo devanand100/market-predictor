@@ -152,3 +152,32 @@ benefit, so it was rejected; the bot keeps model sizing. The research figure at 
 
 ₹5L is where the expiry-day crowd-out stops mattering; above it more capital adds 1–2 points a year (finer lots).
 Expect about 25% a year at ₹5L on recent data, not the 38.7% headline.
+
+## 10. Live margin check, capital and GAP tweaks (2026-10-27)
+**Expiry-day margin is higher than modelled.** On 2026-10-27 Dhan asked ₹7.55L for 3 E0 lots in the Strategy 7 book
+(₹2.52L per lot, ~17% of notional at Nifty 22,740) against the ~13.6% (11.6% + 2% ELM) used in §9. S2 lots stayed at
+~₹1.70L (11.6%). With the bot's sizing (model lots, cut at the 90% cap on Dhan margin), the arithmetic at today's prices:
+
+| Capital | S2 lots | E0 while S2 is open on expiry day |
+|---|---|---|
+| ₹5L | 2 (₹3.40L) | skipped (needs ₹5.92L, cap ₹4.50L); happened on 2026-10-27 |
+| ₹6.6–7.2L | 2 | 1 lot fits |
+| ₹7.3–8.4L | 3 (₹5.10L) | skipped again |
+| ₹8.5L+ | 3 | fits |
+
+The replay barely moves with 17% (₹5L 34.8%, ₹7L 36.5%, ₹10L 37.8%; 2024+ 25.7 / 26.6 / 27.0%) because older years
+traded at lower Nifty with no expiry-day ELM before 2024-11-20; at today's index level the clash happens every week S2
+is open on expiry day. Best capital now: **₹7L**. Floors: S2 needs ₹2.42L, E0 ₹2.96L (both on the 0.55 weight and
+the model margin); ₹3L is the absolute minimum (E0 stops above Nifty ~23,077), **₹3.5L the practical minimum** (still
+trades E0 after a −13% drawdown). At ₹4L: 30.6% / −13.3%, 2024+ 24.5%. Strategy 7 needs ₹10L+ (MON and E0 never size
+below that).
+
+**GAP sleeve tweaks (none adopted).** One change at a time, GAP alone at ₹10L, picked on 2021–23, checked on 2024+
+(base PF 2.37 / 1.56, 73 trades): direction from 5/20-day trend instead of the gap loses (0.51/0.74, 0.99/0.59), so the
+gap is the edge; entry 2–3 days before expiry loses; target +75% is best in-sample (3.81) but no better OOS (1.58);
+target +150/200% worse OOS with −26% DD; exit 1–2 days early about equal; stop −50% hurts IS (1.55), helps OOS (1.88);
+VRP ≤ 2 filter unstable (OOS 2.97 at ≤ 2, 1.24 at ≤ 2.5; 23 trades). Skipping gaps < 0.05–0.15% improved both periods
+on GAP alone, but in full Strategy 6 it lowered CAGR (₹4L 30.6 → 28.8–30.4%) and deepened drawdown (−13.3 → −15.4 to
+−16.4%), so rejected. GAP by year at ₹4L (net, % of account at year start): 2021 −₹13.5k (−3.4%), 2022 none, 2023
++₹3.94L (+68.9%, VIX 10.5–13 all year, 28 trades), 2024 +₹2.22L (+21.9%), 2025 +₹2.43L (+17.4%), 2026 to Sep
++₹1.19L (+7.0%); return on premium falling 39% → 16% → 10%.

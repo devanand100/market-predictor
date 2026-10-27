@@ -2,6 +2,17 @@
 
 Research and backtesting of NIFTY weekly options strategies for a retail trader, net of real costs. Read this file first. To continue unfinished work, read `docs/HANDOFF.md` next (current status and prioritised next steps). Only open other files when the task needs them.
 
+## Rules
+- **Project knowledge lives in this repo, not in an agent's private memory.** Results, decisions, live/paper setup,
+  open plans and data traps go into this file, `docs/` or the bot's README in the same task, so they survive a new
+  laptop or a different agent. Agent memory holds at most short personal preferences.
+- **No silent fallbacks.** When blocked by a missing permission (e.g. AWS IAM), stop and give the exact permission to add.
+- **Bot deployment style:** secrets only in Lambda environment variables; MongoDB Atlas free tier used frugally (few
+  writes, small documents); one Discord message per book per run, errors deduplicated; no retries or duplicate
+  invocations; EventBridge Scheduler in Asia/Kolkata.
+- The options bot and quant-india each renew their own Dhan token of the same account; they never clash. A token
+  copied into `.env` goes stale once its bot renews it.
+
 ## Status (2026-10-01)
 - **Strategy 1, weekly strangle:** 12.6% CAGR 2021–26, −32.9% max drawdown. Code: `final_strategy.py`. Trades only full 5-session weeks (enters 4 sessions before expiry), so holiday weeks such as the Apr-2025 crash are skipped.
 - **Strategy 2, confirmed credit spread:** 6.5% CAGR Jun 2021–Sep 2026, −18.6% max drawdown (2026-10-20, after participant OI was extended back to 2021: 2021 lost 8.4%; from May 2022 it is still 12.2%). Figures below predate that extension. Bear calls carry it; bull puts barely break even. Recommended v2: skip credit < 23.2% of max loss, bull puts at half size → 11.4% CAGR, −8.4% DD. VIX and squeeze filters were rejected (`docs/STRATEGY_2_TRADE_ANALYSIS.md`). Full spec: `docs/STRATEGY_2_CONFIRMED_SPREAD.md`; exported rules: `strategies/confirmed_spread.json`.
