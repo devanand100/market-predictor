@@ -26,6 +26,7 @@ Research and backtesting of NIFTY weekly options strategies for a retail trader,
 - **Strategy 5 on real prices** (`docs/STRATEGY_5_REAL_CHECK.md`, 2026-10-21): at ₹15L it gives 19.3% CAGR / −20.7% DD / PF 1.41, not 29.4%. About 7.5 CAGR points were synthetic edge: L2 lost about 33% of its points and the monthly straddle up to 48%; the gap buy had none. At Dhan's real ~11.6% margin these lots still fit under the 90% cap, so 19.3% / −20.7% stands; lots sized on 11.6% give 17.0% / −16.8% (`research_realtrade_s5_real_margin.py`, 2026-10-23).
 - **Paper bot for Strategy 5 (removed):** `three_sleeve_bot/` ran 2026-10-21/22, was removed from AWS on 2026-10-22 (replaced by `strategy6_bot/`) and its code was deleted on 2026-10-23. Its last README is `docs/THREE_SLEEVE_BOT.md`; the code is in git history at commit `46a7036`.
 - **Monthly 45→21 DTE short straddle** (`docs/MONTHLY_OPTIONS.md`, `research_monthly_*.py`): VRP ≥ 2 filter → 20.5% CAGR / −23.1% DD; stops, re-centring and condors rejected.
+- **Survivor (Raahi Bhushan's open-source trend option seller) and Wave** (`research_survivor.py`, `docs/SURVIVOR_BACKTEST.md`, 2026-11-14): as coded 19.7% CAGR / −43.2% DD; with a 75-pt spot stop + max 6 open clips per side (chosen on 2021–23) 14.8% / −8.3% / PF 1.37, OOS 13.7%; slippage ×2 → 9.0%. Weaker than Strategy 6. Wave (futures grid) loses. Its 81% Sensibull accuracy comes from holding losers, not from edge.
 - Results and what was rejected: `BACKOFF.md`, section 2 (e.g. 0DTE straddles, FII futures signals, PCR, trend).
 - Report: `report/nifty_strategy_report.html` (open in a browser), rebuilt by `python report/build_report.py`. Published copy: https://claude.ai/artifact/9zrJVS9fsbgyGPQuMTkk8r
 
@@ -69,6 +70,7 @@ Research and backtesting of NIFTY weekly options strategies for a retail trader,
 | `research_trade_analysis.py` | Per-trade context for Strategy 2 → `spread_trades_enriched.csv` |
 | `research_institutional.py`, `research_institutional_stress.py` | Ladders, staggered entry, delta-hedged (Black-Scholes + futures), leg-rolling, gamma scalping; `Book` class handles options + futures with costs |
 | `research_vix_regime.py`, `research_vix_filters_bt.py` | VIX, reward-to-risk and squeeze (compression → expansion) filters |
+| `research_survivor.py`, `research_survivor_final.py` | Survivor/Wave from `trading-algo`: trigger grid, clock and mirror baselines, exits, spot-stop combos, Wave grid; final config + stresses + Sensibull-style accuracy |
 | `report/` | `build_report.py` + `report_template.html` + `section_*.html` → `nifty_strategy_report.html`. Charts use the JSON outputs; tables in `section_*.html` are hand-written |
 | `data/reports/` | Outputs (`*_summary.json`, `*_trades.csv`) |
 | `legacy/` | Invalid or superseded code. Do not use |
