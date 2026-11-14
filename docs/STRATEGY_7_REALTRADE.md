@@ -71,6 +71,12 @@ harsh 33.5%). −17% and −18% let the base case reach −21.7%, and −20% rea
 Each cell is CAGR / max drawdown on the trade-close curve. On real 2021–26 data no trigger fires. −16% matches −15%
 in both crash cases and keeps 1 point of headroom over the real worst of −14.97%.
 
+## Paper record (2026-11-14)
+Paper book `s7` in `strategy6_bot` since 2026-10-22 at ₹15L: ₹14,90,916 marked at the 2026-11-13 close (−0.6%), worst
+DD −4.1%, 6 closed trades (3 won / 3 lost, −₹12,978 net), all S2/E0. Unlike the ₹5L Strategy 6 book it took every
+E0. No monthly straddle yet: the first entry window is the 2026-12-29 expiry from 2026-11-16, and VRP must be ≥ 2
+(the 20-day average was +0.23). Detail and the Strategy 6 comparison: `docs/STRATEGY_6_REALTRADE.md` §11.
+
 ## To deploy later
 Add a MON sleeve to `strategy6_bot` (done 2026-10-22 as the Strategy 7 book: `MONTHLY_1015`, VRP from Dhan daily
 closes, monthly expiry chain, strike nearest the forward; rules `mon_entry_due`, `mon_exit_due`, `mon_strike` ported

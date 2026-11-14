@@ -35,8 +35,10 @@ is unavailable, the bot enters on the model margin and the message says "Dhan ch
 
 **Capital: ₹5L since 2026-10-22** (`S6_CAPITAL=500000` in `.env`; ₹3L at the first deploy, then ₹4L). Lots are sized on the
 9% model and only cut when Dhan's real margin (~11.6% of notional, ~13.6% on expiry day) breaks the 90% cap. S2 then takes
-2 lots at ₹5L (₹3.40L at Dhan on 2026-10-23), which can leave no room for E0 on expiry day. In the replay this costs
-little: at ₹5L E0 is skipped in 1 of 135 weeks (2021–26), at ₹3–4L in 22–27. Sizing on Dhan's margin instead (1 S2 lot)
+2 lots at ₹5L (₹3.40L at Dhan on 2026-10-23), which leaves no room for E0 on expiry day (Dhan asks ~17% then). On paper
+E0 was skipped on 2 of the first 3 expiry days. A replay that holds ₹5–7L at today's index level (start 2024 or 2025)
+skips about half the E0 trades for a cost of 0–3 points a year; ₹10L+ skips none (`docs/STRATEGY_6_REALTRADE.md` §11;
+the older "1 of 135 weeks" came from a 2021 start that had compounded far above ₹5L by 2024). Sizing on Dhan's margin instead (1 S2 lot)
 was tested and rejected: 31.0% vs 34.8% CAGR at the same −13% DD (`research_realtrade_real_margin.py`,
 `docs/STRATEGY_6_REALTRADE.md` §9). Replay at real margin, bot weights: ₹3L 28.7% / −14.7%, ₹4L 31.1% / −13.1%,
 **₹5L 34.8% / −13.3% (2024+: 25.6%)**, ₹10L 38.0% / −13.4% (2024+: 27.3%). Above ₹5L more capital adds 1–2 points a year. The research weights are 0.45 / 0.45 (for ₹10L). At ₹3L, 0.55 keeps one

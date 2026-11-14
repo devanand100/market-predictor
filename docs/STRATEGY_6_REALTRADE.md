@@ -167,7 +167,8 @@ Expect about 25% a year at ₹5L on recent data, not the 38.7% headline.
 
 The replay barely moves with 17% (₹5L 34.8%, ₹7L 36.5%, ₹10L 37.8%; 2024+ 25.7 / 26.6 / 27.0%) because older years
 traded at lower Nifty with no expiry-day ELM before 2024-11-20; at today's index level the clash happens every week S2
-is open on expiry day. Best capital now: **₹7L**. Floors: S2 needs ₹2.42L, E0 ₹2.96L (both on the 0.55 weight and
+is open on expiry day. Best capital now: ₹7L (**superseded by §11**: a replay that starts at ₹7L in 2024 or 2025
+grows into the 3-lot band and skips E0 about as often as ₹5L; only ₹10L+ avoids it). Floors: S2 needs ₹2.42L, E0 ₹2.96L (both on the 0.55 weight and
 the model margin); ₹3L is the absolute minimum (E0 stops above Nifty ~23,077), **₹3.5L the practical minimum** (still
 trades E0 after a −13% drawdown). At ₹4L: 30.6% / −13.3%, 2024+ 24.5%. Strategy 7 needs ₹10L+ (MON and E0 never size
 below that).
@@ -181,3 +182,55 @@ on GAP alone, but in full Strategy 6 it lowered CAGR (₹4L 30.6 → 28.8–30.4
 −16.4%), so rejected. GAP by year at ₹4L (net, % of account at year start): 2021 −₹13.5k (−3.4%), 2022 none, 2023
 +₹3.94L (+68.9%, VIX 10.5–13 all year, 28 trades), 2024 +₹2.22L (+21.9%), 2025 +₹2.43L (+17.4%), 2026 to Sep
 +₹1.19L (+7.0%); return on premium falling 39% → 16% → 10%.
+
+## 11. Paper record and the expiry-day crowd-out (2026-11-14, `research_realtrade_expiry_margin.py`)
+**First 3.5 weeks of paper** (`strategy6_bot`, both books started 2026-10-22; marked at the 2026-11-13 close, open S2
+included). Nifty rose ~11% (22,600 → 25,300) with VIX 15–18, the worst tape for short strangles.
+
+| Book | Start | Mark | Return | Closed trades net | Worst DD (mark) | Closed won / lost |
+|---|---|---|---|---|---|---|
+| Strategy 6 | ₹5L | ₹4,81,730 | −3.7% | −₹18,781 (+₹1,180 data fees) | −7.1% (11-06) | 2 / 2 |
+| Strategy 7 | ₹15L | ₹14,90,916 | −0.6% | −₹12,978 (+₹1,180 data fees) | −4.1% (11-06) | 3 / 3 |
+
+- The 2026-10-30 S2 (2 lots) was stopped at the first tick of expiry day 2026-11-03 after a ~370-point gap up: stop level
+  130.34, first available exit 274.45, −₹27,332 (−5.4% of the book). The rules worked as written; the size is the gap.
+- Strategy 6 skipped E0 on 2026-10-27 and 2026-11-03 (2-lot S2 still open, no room at Dhan margin); Strategy 7 took both
+  (+₹16,292, −₹1,342) and that is most of the gap between the books. GAP never armed (VIX > 13). Strategy 7's monthly
+  straddle has had no entry window yet (first one: the 2026-12-29 expiry, from 2026-11-16, needs VRP ≥ 2).
+- Entry spreads are 0.2× the modelled slippage; no health alert, kill switch far away (−15% / −16%).
+
+**Why paper skips E0 far more than the replay said.** §9 and §10 quote "1 skip in 135 weeks at ₹5L", but that replay
+starts with ₹5L in Jan 2021 and has compounded to several times that by 2024, so margin stops binding exactly in the
+high-Nifty years. Starting the replay later, at the bot's sizing (model lots cut to 90% of equity at Dhan margin),
+weights 0.55 / 0.55 / 0.05, with expiry-day entries at Dhan's ~17% (data to 2026-10-01):
+
+| Start | Capital | E0 trades: 9% model | bot, expiry 13.6% | bot, expiry 17% | CAGR model / bot 17% | DD bot 17% |
+|---|---|---|---|---|---|---|
+| 2024-01 | ₹5L | 43 | 28 | 28 | 23.4% / 20.5% | −12.0% |
+| 2024-01 | ₹7L | 43 | 43 | 29 | 24.8% / 21.7% | −12.6% |
+| 2024-01 | ₹10L | 43 | 43 | 43 | 26.5% / 23.2% | −13.3% |
+| 2025-01 | ₹5L | 27 | 21 | 12 | 13.8% / 14.0% | −11.7% |
+| 2025-01 | ₹7L | 27 | 22 | 12 | 17.1% / 16.8% | −12.2% |
+| 2025-01 | ₹10L | 27 | 27 | 27 | 17.4% / 16.2% | −13.1% |
+
+So an account that holds ₹5–7L at today's index level loses about half its E0 trades, which matches paper (2 of 3).
+The cost in return is small, 0–3 points a year (from 2025 skipping E0 even helped at ₹5L), because the E0 skipped is
+the one stacked on an open S2. ₹7L is not a fix: the account grows into the 3-lot S2 band (₹7.3–8.4L) and is crowded out
+again. ₹10L trades every E0; its lower CAGR against the model comes from S2 lots cut at Dhan margin, not from E0.
+Decision: keep ₹5L on paper and compare paper with these 2024+/2025+ figures, not the 2021-start 34.8%.
+
+Not yet done: replaying the paper weeks themselves trade by trade. The engine cache ends 2026-10-01; it needs
+`update_market_data.py` with a valid `DHAN_ACCESS_TOKEN` in `.env` (the `.env` token goes stale whenever its owner renews).
+
+**E0 on its own** (`research_realtrade_e0_only.py`, 2021 to 2026-10-01, weight 0.55, running costs ₹1,990/month on):
+
+| | ₹5L 9% model | ₹5L Dhan 17% | ₹10L Dhan 17% | Strategy 6 ₹5L Dhan 17% |
+|---|---|---|---|---|
+| CAGR / max DD | 6.6% / −7.8% | 4.7% / −6.4% | 7.8% / −6.5% | 32.8% / −13.1% |
+| 2021–23 / 2024+ CAGR | 10.6 / 2.5% | 8.4 / 0.9% | 11.6 / 3.7% | 39.8 / 25.6% |
+| By year 2021…2026 | | +10.3, +16.1, −0.7, +5.8, −0.2, −2.9 | +12.3, +21.4, +1.8, +9.7, +2.5, −1.6 | +13.6, +33.7, +79.6, +37.7, +25.0, +8.8 |
+
+E0 trades 135 times (37 / 48 / 7 / 16 / 13 / 14 a year), PF ~1.9 overall but win rate down from ~60% (2021, 2024) to
+46% (2025) and 43% (2026); it is near break-even since 2025. It sits idle most days, so running costs weigh on it (~4.8
+points a year at ₹5L). The crowd-out above therefore costs little on recent data. Dropping E0 altogether is untested
+inside the full strategy (it trades on days S2 is idle or stopped).
