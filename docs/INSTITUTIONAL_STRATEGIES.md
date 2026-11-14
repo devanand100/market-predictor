@@ -1,5 +1,7 @@
 # Institutional short-volatility structures: findings (2026-10-01)
 
+> **2026-11-14:** these results use intrinsic-value pricing for strikes without a traded price. D2 on real prices is 13.2% / −20.3% with 2024-26 at 3.8%, and is rejected: see `D2_REAL_CHECK.md`.
+
 Code: `research_institutional.py` (14 variants), `research_institutional_stress.py` (stress tests).
 Outputs: `data/reports/research_institutional*.csv`.
 
